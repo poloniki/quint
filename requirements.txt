@@ -21,9 +21,17 @@ gcsfs
 google-cloud-storage
 mlflow
 s3fs
+#pip install --upgrade google-cloud-speech
+#pip install --upgrade google-cloud-storage
+
+
 
 # utilities
 six>=1.14
 joblib
 memoized-property
 termcolor
+
+# new
+pydub
+soundfile

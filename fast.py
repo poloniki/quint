@@ -29,7 +29,6 @@ def upload(file: UploadFile = File(...)):
             # Get audio file namec
             audio_file_name= file.filename
             audio_file_name = audio_file_name.split('.')[0] + '.wav'
-            breakpoint()
             # Get audio file transcribtion
             transcript = tga.google_transcribe(audio_file_name)
             # Create name for transcript
