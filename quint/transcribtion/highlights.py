@@ -15,7 +15,9 @@ def create_embedding(path , version = 1):
             doc = f.readlines()
     else:
         doc = path.split('/n')
-    doc = doc[0].replace("?", ". ")
+    doc = ' '.join(doc)
+
+    doc = doc.replace("?", ". ")
     sentences = doc.split('. ')
     embeddings = model.encode(sentences)
     print('Embeddings for highlights created')
@@ -56,7 +58,6 @@ def get_best_sentences(df,embeddings):
 
 def get_colored_transcript(text):
     sentences, embeddings = create_embedding(text , version = 2)
-    breakpoint()
     df = create_df(sentences, embeddings)
     best_sentences, df = get_best_sentences(df,embeddings)
     text = ''

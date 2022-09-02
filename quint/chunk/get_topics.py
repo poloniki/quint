@@ -5,12 +5,12 @@ from quint.chunk.load_data import get_text_data
 
 # Train BERTopic with a custom CountVectorizer
 
-def get_topics(path_to_text):
+def get_topics(text):
     # Load text from result of prediction
     print("Start to get topics")
-    text = get_text_data(path_to_text)
+    #text = get_text_data(path_to_text)
     # Clean sentences
-
+    text = text.replace("?", ".")
     sentences_clean = clean_text(text)
     # Initiate vectorizer model
     vectorizer_model = TfidfVectorizer(ngram_range=(1, 3), stop_words="english")

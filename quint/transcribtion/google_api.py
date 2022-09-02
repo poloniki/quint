@@ -67,10 +67,7 @@ def google_transcribe(audio_file_name):
     mp3_to_wav(file_name)
 
     # The name of the audio file to transcribe
-
     frame_rate, channels = frame_rate_channel(file_name)
-
-
 
     if channels > 1:
         stereo_to_mono(file_name)
@@ -105,11 +102,12 @@ def google_transcribe(audio_file_name):
     for result in response.results:
         transcript += result.alternatives[0].transcript
 
-    #delete_blob(bucket_name, destination_blob_name)
+    delete_blob(bucket_name, destination_blob_name)
+
     return transcript
 
 def write_transcripts(transcript_filename,transcript):
-    f= open(output_filepath + transcript_filename,"w+")
+    f=open(output_filepath + transcript_filename,"w+")
     f.write(transcript)
     f.close()
 
