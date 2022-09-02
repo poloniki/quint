@@ -6,7 +6,7 @@ from google.cloud import speech
 import wave
 from google.cloud import storage
 import time
-
+import threading
 #import soundfile
 import wave
 
@@ -52,12 +52,12 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
     blob.upload_from_filename(source_file_name)
     print('Uploaded_file')
 
+
 def delete_blob(bucket_name, blob_name):
     """Deletes a blob from the bucket."""
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(blob_name)
-
     blob.delete()
 
 
@@ -82,6 +82,8 @@ def google_transcribe(audio_file_name):
     upload_blob(bucket_name, source_file_name, destination_blob_name)
 
     gcs_uri = 'gs://' + bucketname + '/' + audio_file_name
+
+    print('Started transcript')
     transcript = ''
 
     client = speech.SpeechClient()
@@ -96,12 +98,14 @@ def google_transcribe(audio_file_name):
 
     # Detects speech in the audio file
     operation = client.long_running_recognize(config=config, audio=audio)
+
     response = operation.result(timeout=10000)
+    print('Got the response')
 
     for result in response.results:
         transcript += result.alternatives[0].transcript
 
-    delete_blob(bucket_name, destination_blob_name)
+    #delete_blob(bucket_name, destination_blob_name)
     return transcript
 
 def write_transcripts(transcript_filename,transcript):

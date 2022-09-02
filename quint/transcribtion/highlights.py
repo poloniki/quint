@@ -6,12 +6,15 @@ import pandas as pd
 from termcolor import colored
 import os
 
-SYMBOLS_STEP= os.getenv('SYMBOLS_STEP')
+SYMBOLS_STEP = os.getenv('SYMBOLS_STEP')
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-def create_embedding(path):
-    with open(path) as f:
-        doc = f.readlines()
+def create_embedding(path , version = 1):
+    if version == 1:
+        with open(path) as f:
+            doc = f.readlines()
+    else:
+        doc = path.split('/n')
     doc = doc[0].replace("?", ". ")
     sentences = doc.split('. ')
     embeddings = model.encode(sentences)
@@ -38,13 +41,13 @@ def get_best_sentences(df,embeddings):
         A_sparse = sparse.csr_matrix(A)
         similarities = cosine_similarity(A_sparse)
         average_sim = list(np.round(similarities.mean(axis=1),2))
-
+        min_score =np.min(average_sim)
         max_score = np.max(average_sim)
-        best_sentence = [i for i, x in enumerate(average_sim) if x > max_score-0.02]
+        best_sentence = [i for i, x in enumerate(average_sim) if (x > max_score - 0.02) | (x == min_score)]
         for every in best_sentence:
             best_sentences.append(temp_df.iloc[every].sentence)
 
-    best_sentences = [each for each in best_sentences if len(each)> 50]
+    best_sentences = [each for each in best_sentences if len(each) > 50]
     df['highlight'] = df['sentence'].apply(lambda x: x in best_sentences)
     print('Best sentences created.')
 
@@ -52,7 +55,8 @@ def get_best_sentences(df,embeddings):
 
 
 def get_colored_transcript(text):
-    sentences, embeddings = create_embedding(text)
+    sentences, embeddings = create_embedding(text , version = 2)
+    breakpoint()
     df = create_df(sentences, embeddings)
     best_sentences, df = get_best_sentences(df,embeddings)
     text = ''
