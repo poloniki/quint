@@ -62,7 +62,6 @@ def delete_blob(bucket_name, blob_name):
 
 
 def google_transcribe(audio_file_name):
-
     file_name = filepath + audio_file_name
     mp3_to_wav(file_name)
 
@@ -86,8 +85,8 @@ def google_transcribe(audio_file_name):
     client = speech.SpeechClient()
     audio = speech.RecognitionAudio(uri=gcs_uri)
 
-    config = speech.RecognitionConfig(
-    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+    config   = speech.RecognitionConfig(
+    encoding = speech.RecognitionConfig.AudioEncoding.LINEAR16,
     sample_rate_hertz=frame_rate,
     language_code='en-US',
     enable_automatic_punctuation=True,

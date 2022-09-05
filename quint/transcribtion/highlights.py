@@ -5,9 +5,18 @@ import numpy as np
 import pandas as pd
 from termcolor import colored
 import os
+from quint.chunk.chunking import get_middle_points
+from quint.transcribtion.words_outline import outline
+
 
 SYMBOLS_STEP = os.getenv('SYMBOLS_STEP')
 model = SentenceTransformer('all-MiniLM-L6-v2')
+
+import string
+
+def preprocessing(sentence):
+    sentence = ''.join([each for each in sentence if each not in string.punctuation])
+    return sentence
 
 def create_embedding(path , version = 1):
     if version == 1:
@@ -26,16 +35,16 @@ def create_embedding(path , version = 1):
 
 def create_df(sentences, embeddings):
     df = pd.DataFrame()
-    df['sentence'] = sentences[:-1]
+    df['sentence'] = sentences   #[:-1]
     df['len'] = df['sentence'].apply(lambda x: len(x))
     df['cum'] = df['len'].cumsum()
     return df
 
 def get_best_sentences(df,embeddings):
-
+    steps = round(df['cum'].sum() / 10)
 
     best_sentences = []
-    steps = range(0, df.cum.max() + 8000, 8000)
+    steps = range(0, df.cum.max() + steps, steps*2)
     for each in range(len(steps)-1):
         temp_df = df.loc[(df.cum > steps[each])&(df.cum < steps[each+1])]
         indexes = temp_df.index
@@ -59,12 +68,32 @@ def get_best_sentences(df,embeddings):
 def get_colored_transcript(text):
     sentences, embeddings = create_embedding(text , version = 2)
     df = create_df(sentences, embeddings)
+    middle_points = get_middle_points(df,embeddings)
+    outline_df = outline(df)
     best_sentences, df = get_best_sentences(df,embeddings)
+
     text = ''
     for num, each in enumerate(df['sentence']):
+
+        # Ouline most important words
+        to_bold = outline_df['names'].iloc[num]
+        if len(to_bold)>0:
+            to_unpack = [i.split(' ', 1) for i in to_bold]
+            flat_list = [item for sublist in to_unpack for item in sublist]
+            each = " ".join(f'\033[1m{t}\033[0m' if (preprocessing(t) in flat_list) & (preprocessing(t).lower() != 'the')  else t for t in each.split())
+
+        # Highliting best sentence
         if df['highlight'].iloc[num] == True:
-            text+=colored(f'{each}. ','white','on_red')
+            each=colored(f'{each}. ','white','on_red')
         else:
-            text+=f'{each}. '
+            each=f'{each}. '
+
+        # Chunk the text
+        if num in middle_points:
+            text+=f' \n \n {each}'
+        else:
+            text+=f'{each}'
+
+
     print('Colored text ready.')
     return text

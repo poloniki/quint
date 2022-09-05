@@ -8,6 +8,7 @@ wheel>=0.29
 numpy
 pandas
 scikit-learn
+sklearn
 
 # tests/linter
 black
@@ -24,6 +25,7 @@ s3fs
 fastapi
 pytz
 uvicorn
+#string
 
 # GOOGLE
 google-cloud-speech
@@ -44,3 +46,10 @@ pydub
 soundfile
 bertopic
 protobuf==3.20
+youtube_transcript_api
+
+#Text process
+spacy
+#string
+scipy
+youtube_transcript_api
