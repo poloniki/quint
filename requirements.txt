@@ -8,6 +8,7 @@ wheel>=0.29
 numpy
 pandas
 scikit-learn
+sklearn
 
 # tests/linter
 black
@@ -21,9 +22,17 @@ gcsfs
 google-cloud-storage
 mlflow
 s3fs
-#pip install --upgrade google-cloud-speech
-#pip install --upgrade google-cloud-storage
+fastapi
+pytz
+uvicorn
+#string
 
+# GOOGLE
+google-cloud-speech
+google-cloud-storage
+
+# transformers
+sentence_transformers
 
 
 # utilities
@@ -31,7 +40,16 @@ six>=1.14
 joblib
 memoized-property
 termcolor
-
+python-multipart
 # new
 pydub
 soundfile
+bertopic
+protobuf==3.20
+youtube_transcript_api
+
+#Text process
+spacy
+#string
+scipy
+youtube_transcript_api

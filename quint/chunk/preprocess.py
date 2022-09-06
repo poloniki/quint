@@ -15,7 +15,7 @@ def clean(text):
     words_only = [word for word in tokenized if word.isalpha()] # Remove numbers
     stop_words = set(stopwords.words('english')) # Make stopword list
     without_stopwords = [word for word in words_only if not word in stop_words] # Remove Stop Words
-    lemma=WordNetLemmatizer() # Initiate Lemmatizer
+    lemma = WordNetLemmatizer() # Initiate Lemmatizer
     lemmatized = [lemma.lemmatize(word) for word in without_stopwords] # Lemmatize
     return lemmatized
 

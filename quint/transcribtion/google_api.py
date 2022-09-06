@@ -6,7 +6,7 @@ from google.cloud import speech
 import wave
 from google.cloud import storage
 import time
-
+import threading
 #import soundfile
 import wave
 
@@ -52,25 +52,21 @@ def upload_blob(bucket_name, source_file_name, destination_blob_name):
     blob.upload_from_filename(source_file_name)
     print('Uploaded_file')
 
+
 def delete_blob(bucket_name, blob_name):
     """Deletes a blob from the bucket."""
     storage_client = storage.Client()
     bucket = storage_client.get_bucket(bucket_name)
     blob = bucket.blob(blob_name)
-
     blob.delete()
 
 
 def google_transcribe(audio_file_name):
-
     file_name = filepath + audio_file_name
     mp3_to_wav(file_name)
 
     # The name of the audio file to transcribe
-
     frame_rate, channels = frame_rate_channel(file_name)
-
-
 
     if channels > 1:
         stereo_to_mono(file_name)
@@ -82,13 +78,15 @@ def google_transcribe(audio_file_name):
     upload_blob(bucket_name, source_file_name, destination_blob_name)
 
     gcs_uri = 'gs://' + bucketname + '/' + audio_file_name
+
+    print('Started transcript')
     transcript = ''
 
     client = speech.SpeechClient()
     audio = speech.RecognitionAudio(uri=gcs_uri)
 
-    config = speech.RecognitionConfig(
-    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+    config   = speech.RecognitionConfig(
+    encoding = speech.RecognitionConfig.AudioEncoding.LINEAR16,
     sample_rate_hertz=frame_rate,
     language_code='en-US',
     enable_automatic_punctuation=True,
@@ -96,16 +94,19 @@ def google_transcribe(audio_file_name):
 
     # Detects speech in the audio file
     operation = client.long_running_recognize(config=config, audio=audio)
+
     response = operation.result(timeout=10000)
+    print('Got the response')
 
     for result in response.results:
         transcript += result.alternatives[0].transcript
 
     delete_blob(bucket_name, destination_blob_name)
+
     return transcript
 
 def write_transcripts(transcript_filename,transcript):
-    f= open(output_filepath + transcript_filename,"w+")
+    f=open(output_filepath + transcript_filename,"w+")
     f.write(transcript)
     f.close()
 
