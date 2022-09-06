@@ -49,7 +49,7 @@ def upload(file: UploadFile = File(...)):
             # # Get audio file transcribtion
             transcript = tga.google_transcribe(audio_file_name)
 
-            if len(transcript) > 50000:
+            if len(transcript) > 30000000:
                 try:
                     topics = get_topics(transcript)
                 except:
@@ -73,8 +73,13 @@ def upload(file: UploadFile = File(...)):
         finally:
             file.file.close()
 
+    with open(output_filepath+file.filename.split('.')[0] + '.txt') as f:
+        # Get audio file name
+        transcript = f.readlines()
 
-    return 'We already have this audio.'
+        f.close()
+
+    return {'transcript':transcript}
 
 
 
@@ -85,6 +90,7 @@ class Body(BaseModel):
 @app.post("/chunk")
 def chunking_text(body: Body):
     input_text = body.text
+
     #Clean version without most importan words and sentences
     sentences,embeddings = create_embedding(input_text , version=2)
     df = create_df(sentences,embeddings)
@@ -109,10 +115,10 @@ def chunking_text(body: Body):
 # from typing import List
 
 # @app.post("/timestamp")
-# def getting_timestamps(chunks:list):
-#     print('yes')
-#     #chunks = body.chunks
-#     #transcript = body.transcript
+# def getting_timestamps(chunks:List[str], transcript:List[dict]):
+
+
+
 #     text = ''
 #     for i in transcript:
 #         text += ' ' + f'{[i["start"]]} ' + highlights.preprocessing(i['text'])
