@@ -18,6 +18,7 @@ from chunk_api import chunk
 from summary_api import summarize
 from timestamp import timestamping
 from youtube import video_name
+from getting_best_api import get_best
 
 
 
@@ -155,11 +156,16 @@ if (summary) & (text_file not in os.listdir("results/")):
     ###### SUMMARIZATION PART #########
     # Create a list of ready summaries
     summary_list = [summarize(each) for each in chunked_text]
+
+    #Take out escape characters and punct which messes with API
+    summary_list = list(map(lambda chunk : chunk.replace('\\','').replace('\"','') , summary_list))
+
     # Create headlines from the summaries
     headlines =[summarize(each, length=20) for each in summary_list]
-    # Add headlines to the summaries
-    summary_list =[f"<b>{headlines[i]}</b>" + '\n\n' + each for i,each in enumerate(summary_list)]
-
+    # Add headlines to the summaries + get best with higlights
+    summary_list =[f"<b>{headlines[i]}</b>" + '\n\n' + get_best(each) for i,each in enumerate(summary_list)]
+    # # Create Html tags for best words and sents
+    # summary_list = [ for each in summary_list]
     #Add timestamps to summaries
     summary_list = [timestamps[i] + ' ' + each for i,each in enumerate(summary_list)]
 
@@ -167,7 +173,6 @@ if (summary) & (text_file not in os.listdir("results/")):
 
 
     # Create an concatenated summary from summary_list
-    summary_list = list(map(lambda chunk : chunk.replace('\\','').replace('\"','') , summary_list))
 
     # Join the resulting summary list into one text
     title = video_name(video_id)
