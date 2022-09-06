@@ -15,6 +15,7 @@ from processing import concatenate_lines
 from punctuation_api import punctuate
 from chunk_api import chunk
 from summary_api import summarize
+from timestamp import timestamping
 
 
 st.session_state['flag'] = False
@@ -146,12 +147,19 @@ if summary:
     # Now we need to chunk text into main parts
     chunked_text = chunk(punctuated_text) ## Returns list of chunks
     print('Chunked')
+
+    # Get the timestamp of each chunk
+    timestamps = timestamping(chunked_text,transcript)
+
     # Create a list of ready summaries
-    summary_list = [summarize(each) for each in chunked_text]
+    summary_list = [timestamps[i] + ' ' + summarize(each) for i,each in enumerate(chunked_text)]
     print(len(summary_list))
     # Create an concatenated summary from summary_list
+    summary_list = list(map(lambda chunk : chunk.replace('\\','').replace('\"','') , summary_list))
+
     summary = '\n\n'.join(summary_list)
 
+    print(timestamps)
 
     # Return the result to streamlit
     st.markdown(summary)
