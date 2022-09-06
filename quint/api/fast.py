@@ -112,3 +112,14 @@ def highligh_words(body: Body):
     input_text = body.text
     transcript = highlights.get_colored_transcript(input_text)
     return {'edited':transcript}
+
+
+# @app.post("/topics")
+# def get_bert_topics(body: Body):
+#     input_text = body.text
+#     try:
+#         topics = get_topics(input_text)
+#     except Exception as e:
+#         print(e)
+#         topics = 'Text is too short.'
+#     return {'edited':topics}
