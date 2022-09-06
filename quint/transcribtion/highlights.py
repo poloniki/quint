@@ -41,10 +41,13 @@ def create_df(sentences, embeddings):
     return df
 
 def get_best_sentences(df,embeddings):
-    steps = round(df['cum'].sum() / 10)
+    size = np.sqrt(np.sqrt(len(df)))
+
+    steps = round(df['cum'].sum() / round(size))
 
     best_sentences = []
     steps = range(0, df.cum.max() + steps, steps*2)
+
     for each in range(len(steps)-1):
         temp_df = df.loc[(df.cum > steps[each])&(df.cum < steps[each+1])]
         indexes = temp_df.index
