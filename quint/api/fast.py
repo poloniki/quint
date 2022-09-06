@@ -107,27 +107,8 @@ def chunking_text(body: Body):
     return {'for_summary':clean_chunks}
 
 
-# class BodyList(BaseModel):
-#     transcript: list = [dict]
-#     chunks:list = [str]
-
-# from fastapi import Query
-# from typing import List
-
-# @app.post("/timestamp")
-# def getting_timestamps(chunks:List[str], transcript:List[dict]):
-
-
-
-#     text = ''
-#     for i in transcript:
-#         text += ' ' + f'{[i["start"]]} ' + highlights.preprocessing(i['text'])
-
-#     final_dict = {}
-#     for i, each in enumerate(chunks):
-#         timestamp = get_timestamp(highlights.preprocessing(each[0:500].lower()), highlights.preprocessing(text).lower(), 3)
-#         timestamp = round(float(re.findall("\d+\.\d+", timestamp)[0]))
-#         timestamp = str(datetime.timedelta(seconds=timestamp))
-#         final_dict.update({i:{timestamp:each}})
-
-#     return final_dict
+@app.post("/best")
+def highligh_words(body: Body):
+    input_text = body.text
+    transcript = highlights.get_colored_transcript(input_text)
+    return {'edited':transcript}

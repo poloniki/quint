@@ -80,11 +80,11 @@ def get_colored_transcript(text):
         if len(to_bold)>0:
             to_unpack = [i.split(' ', 1) for i in to_bold]
             flat_list = [item for sublist in to_unpack for item in sublist]
-            each = " ".join(f'\033[1m{t}\033[0m' if (preprocessing(t) in flat_list) & (preprocessing(t).lower() != 'the')  else t for t in each.split())
+            each = " ".join(f'<span class="BestWords">{t}</span>' if (preprocessing(t) in flat_list) & (preprocessing(t).lower() != 'the')  else t for t in each.split())
 
         # Highliting best sentence
         if df['highlight'].iloc[num] == True:
-            each=colored(f'{each}. ','white','on_red')
+            each=f'<span class="BestWords">{each}.</span> '
         else:
             each=f'{each}. '
 
