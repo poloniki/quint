@@ -15,7 +15,6 @@ def get_timestamp(message ,text, length):
             message_tr = ' '.join(message.strip().split(' ')[length-i:2*length-i])
             pattern = re.compile(f"(\[\d+.\d+\]) [^[]*{message_tr}")
             last_index = re.search(pattern , text)
-            print('second attempt')
             return last_index.group(1)
         except AttributeError:
             continue
