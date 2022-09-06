@@ -20,6 +20,9 @@ from timestamp import timestamping
 
 st.session_state['flag'] = False
 
+component= "<h1 style= 'color: red' > Inject Header HTML  </h1>"
+st.markdown(component, unsafe_allow_html=True)
+
 
 @st.cache(allow_output_mutation=True)
 def get_base64_of_bin_file(bin_file):

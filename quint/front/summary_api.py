@@ -12,7 +12,7 @@ def summarize(text):
         sub_chunks_joined = ' '.join(sub_chunks)
         summary = get_summary(sub_chunks_joined)
         return summary
-    summary = get_summary(chunk)
+    summary = get_summary(text)
     return summary
 
 def get_summary(text):
