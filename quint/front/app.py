@@ -21,7 +21,10 @@ from youtube import video_name
 from getting_best_api import get_best
 
 
-
+def get_sec(time_str):
+    """Get seconds from time."""
+    h, m, s = time_str.split(':')
+    return int(h) * 3600 + int(m) * 60 + int(s)
 
 
 
@@ -36,13 +39,13 @@ st.session_state['flag'] = False
 # component= "<h1 style= 'color: red' > Inject Header HTML  </h1>"
 # st.markdown(component, unsafe_allow_html=True)
 
-col1, col2, col3 = st.columns([0.05,0.9,0.05])
+col1, col2, col3 = st.columns([0.15,0.8,0.05])
 
 with col1:
     st.write(' ')
 
 with col2:
-    st.image("logo.jpg")
+    st.image("logo.png")
 
 with col3:
     st.write(' ')
@@ -68,12 +71,20 @@ main_html = '''
         background-image: linear-gradient(to right, #dd3764, #99ff99);
     }
 
+    .TimeStamp {
+        background: rgb(200 230 254 / 80%);
+        padding: 0.12em 0.3em;
+        margin: 0 0.0000001em;
+        line-height: 1;
+        border-radius: 0.15em;
+        text-decoration: underline;
+    }
     .BestWords {
         background: #feca74;
-        padding: 0.35em 0.6em;
-        margin: 0 0.15em;
+        padding: 0.12em 0.3em;
+        margin: 0 0.0000001em;
         line-height: 1;
-        border-radius: 0.25em"
+        border-radius: 0.15em"
     }
 
     .css-1cpxqw2 {
@@ -89,10 +100,14 @@ main_html = '''
         padding-bottom: 0 rem;
         padding-top: 0 rem;
         align: buttom;
-    }
+
+
     </style>
     '''
 st.markdown(main_html, unsafe_allow_html=True)
+
+
+
 
 
 def main_page():
@@ -124,7 +139,7 @@ col1, col2 = st.columns([0.8,0.2])
 
 
 with col1:
-    link = st.text_input('', 'https://www.youtube.com/watch?v=v2ML_uKSskI', on_change=refresh_state)
+    link = st.text_input('', 'https://www.youtube.com/watch?v=6T7pUEZfgdI', on_change=refresh_state)
 
 
 with col2:
@@ -133,8 +148,12 @@ with col2:
     summary = st.button('QUINT')
 
 
+if 'seconds' not in st.session_state:
+	st.session_state.seconds = 0
 
-
+#https://www.youtube.com/watch?v=6T7pUEZfgdI&t=6586s
+# button = """<a href="https://www.youtube.com/watch?v=6T7pUEZfgdI&t=6586s" class="button">Go to Google</a>"""
+# st.markdown(button, unsafe_allow_html=True)
 
 
 video_id = link.split("=")[1]
@@ -189,8 +208,7 @@ if (summary) & (text_file not in os.listdir("results/")):
     # # Create Html tags for best words and sents
     # summary_list = [ for each in summary_list]
     #Add timestamps to summaries
-    summary_list = [timestamps[i] + ' ' + each for i,each in enumerate(summary_list)]
-
+    summary_list = [f"<span class='TimeStamp'>{timestamps[i]}</span>" + ' ' + each for i,each in enumerate(summary_list)]
 
 
 
@@ -205,7 +223,7 @@ if (summary) & (text_file not in os.listdir("results/")):
 
 
     # Return the result to streamlit
-    st.markdown(summary, unsafe_allow_html=True)
+    markdown = st.markdown(summary, unsafe_allow_html=True)
     #YouTubeVideo(video_id)
 
 
@@ -213,6 +231,15 @@ if (summary) & (text_file not in os.listdir("results/")):
     with open(f'results/{video_id}.txt', 'w') as f:
         f.write(summary)
         f.close()
+
+
+    # option = st.selectbox(
+    #     'Select timstamp',
+    #     (each for each in timestamps),on_change=)
+
+    #st.write('You selected:', option)
+
+
     st.video(link)
 
 # If we already have the summary of some video - return it
