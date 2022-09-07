@@ -54,7 +54,8 @@ def get_base64_of_bin_file(bin_file):
         data = f.read()
     return base64.b64encode(data).decode()
 
-
+        # background-color: green;
+        # background-image: linear-gradient(to right, #99ff99, #99ff99);
 main_html = '''
     <style>
     .stApp {
@@ -65,6 +66,14 @@ main_html = '''
     .st-cs {
         background-color: green;
         background-image: linear-gradient(to right, #dd3764, #99ff99);
+    }
+
+    .BestWords {
+        background: #feca74;
+        padding: 0.35em 0.6em;
+        margin: 0 0.15em;
+        line-height: 1;
+        border-radius: 0.25em"
     }
 
     .css-1cpxqw2 {
@@ -135,35 +144,48 @@ text_file = f"{video_id}.txt"
 
 # First we check if we already have summary for some specifict podcast
 if (summary) & (text_file not in os.listdir("results/")):
+    # VISUAL ELEMENT - starting
+    progress = 0
+    my_bar = st.progress(progress)
 
-
+    ### GETTING TRANSCRIPT ####
     # Get the transcipt: list of dictionaries
     YouTubeTranscriptApi.get_transcript(video_id)
     transcript = YouTubeTranscriptApi.get_transcript(video_id)
+    my_bar.progress(progress + 1)
 
     # Now we need to get the text out and punctuate it
     concatenated_text = concatenate_lines(transcript)  ## Function that creates txt file from list of texts
+    my_bar.progress(progress + 4)
     print('Starting punctuating')
     punctuated_text = punctuate(concatenated_text) ## Punctuate concatenated text
+    my_bar.progress(progress + 30)
 
     # Now we need to chunk text into main parts
     chunked_text = chunk(punctuated_text) ## Returns list of chunks
     print(f'Chunked into {len(chunked_text)} chunks.')
+    my_bar.progress(progress + 15)
 
     # Get the timestamp of each chunk
     timestamps = timestamping(chunked_text,transcript)
-
+    my_bar.progress(progress + 5)
     ###### SUMMARIZATION PART #########
     # Create a list of ready summaries
     summary_list = [summarize(each) for each in chunked_text]
+    my_bar.progress(progress + 30)
 
     #Take out escape characters and punct which messes with API
     summary_list = list(map(lambda chunk : chunk.replace('\\','').replace('\"','') , summary_list))
 
     # Create headlines from the summaries
-    headlines =[summarize(each, length=20) for each in summary_list]
+    headlines =[summarize(each, length=10) for each in summary_list]
+    my_bar.progress(progress + 10)
+
     # Add headlines to the summaries + get best with higlights
     summary_list =[f"<b>{headlines[i]}</b>" + '\n\n' + get_best(each) for i,each in enumerate(summary_list)]
+    my_bar.progress(progress + 5)
+
+
     # # Create Html tags for best words and sents
     # summary_list = [ for each in summary_list]
     #Add timestamps to summaries
@@ -209,12 +231,3 @@ elif summary:
             summary+=line
     st.markdown(summary, unsafe_allow_html=True)
     st.video(link)
-
-
-
-
-
-
-
-
-st.markdown("""<b>Created by Francesco Puglia with inspiration of Indinan Guy</b>""", unsafe_allow_html=True)

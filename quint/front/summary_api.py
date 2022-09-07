@@ -1,7 +1,7 @@
 import requests
 from chunk_api import chunk
 
-def summarize(text, length=300):
+def summarize(text, length=150):
     sub_chunks = []
     if len(text.split()) > 900:
         sub_chunks = chunk(text)
@@ -12,10 +12,10 @@ def summarize(text, length=300):
         sub_chunks_joined = ' '.join(sub_chunks)
         summary = get_summary(sub_chunks_joined)
         return summary
-    summary = get_summary(text,length=300)
+    summary = get_summary(text,length=150)
     return summary
 
-def get_summary(text, length=300):
+def get_summary(text, length=150):
     url =  'https://bart-finetuned-summarization-6u4yq4wz5q-no.a.run.app/generate'
     params = {'text': text, 'summary_min_length': 0, 'summary_max_length': length}
 
