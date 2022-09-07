@@ -1,4 +1,5 @@
 FROM tensorflow/tensorflow:latest
+#FROM python:3.8-slim-buster
 COPY quint /quint
 COPY requirements.txt /requirements.txt
 RUN pip install --upgrade pip

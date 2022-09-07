@@ -3,7 +3,7 @@ pip>=9
 setuptools>=26
 twine
 wheel>=0.29
-
+python-dev-tools
 # data science
 numpy
 pandas
@@ -25,7 +25,6 @@ s3fs
 fastapi
 pytz
 uvicorn
-#string
 
 # GOOGLE
 google-cloud-speech
@@ -50,6 +49,5 @@ youtube_transcript_api
 
 #Text process
 spacy
-#string
 scipy
 youtube_transcript_api
