@@ -1,13 +1,8 @@
 from distutils import text_file
-from turtle import right
 import streamlit as st
 import base64
 import time
 import random
-import seaborn as sns
-from time import sleep
-from pytube import YouTube
-from transformers import pipeline
 from youtube_transcript_api import YouTubeTranscriptApi
 from IPython.display import YouTubeVideo
 import os
@@ -22,7 +17,6 @@ from getting_best_api import get_best
 from bert import get_bert, color_df
 import pandas as pd
 import random
-import numpy as np
 
 
 def get_sec(time_str):
@@ -33,7 +27,7 @@ def get_sec(time_str):
 
 
 layout="wide"
-st.set_page_config( page_title='Quint')
+st.set_page_config(page_title='Quint')
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 st.session_state['flag'] = False
@@ -43,7 +37,7 @@ st.session_state['flag'] = False
 # component= "<h1 style= 'color: red' > Inject Header HTML  </h1>"
 # st.markdown(component, unsafe_allow_html=True)
 
-col1, col2, col3 = st.columns([0.15,0.8,0.05])
+col1, col2, col3 = st.columns([0.15,0.65,0.1])
 
 with col1:
     st.write(' ')
@@ -55,6 +49,7 @@ with col3:
     st.write(' ')
 
 
+
 @st.cache(allow_output_mutation=True)
 def get_base64_of_bin_file(bin_file):
     with open(bin_file, 'rb') as f:
@@ -63,19 +58,38 @@ def get_base64_of_bin_file(bin_file):
 
         # background-color: green;
         # background-image: linear-gradient(to right, #99ff99, #99ff99);
+
+
+
+
 main_html = '''
     <style>
-    .stApp {
-    background-image: url("data:image/jpg;base64,%s");
-    background-size: cover;
+    thead tr th:first-child {display:none}
+    tbody th {display:none}
+
+    .css-a51556 {
+        border-bottom: 1px solid rgba(49, 51, 63, 0.1);
+        border-right: 1px solid rgba(49, 51, 63, 0.1);
+        vertical-align: middle;
+        padding: 0.25rem 0.375rem;
+        font-weight: 600;
+        color: rgb(12 12 12 / 80%);
+        background-color: rgb(12 12 12 / 4%);
     }
+
     .css-1n76uvr {
-        width: 834px;
+        width: 900px;
         position: relative;
         display: flex;
         flex: 1 1 0%;
         flex-direction: column;
         gap: 1rem;
+    }
+
+    .stApp {
+    background-image: url("data:image/jpg;base64,%s");
+    background-size: cover;
+
     }
 
     .st-cs {
@@ -148,7 +162,7 @@ col1, col2 = st.columns([0.8,0.2])
 
 
 with col1:
-    link = st.text_input('', 'https://www.youtube.com/watch?v=6T7pUEZfgdI', on_change=refresh_state)
+    link = st.text_input('', 'https://www.youtube.com/watch?v=7ZUSVabB6N4', on_change=refresh_state)
 
 
 with col2:
@@ -223,7 +237,7 @@ if (summary) & (text_file not in os.listdir("results/")):
     # # Create Html tags for best words and sents
     # summary_list = [ for each in summary_list]
     #Add timestamps to summaries
-    summary_list = [f"<span class='TimeStamp'>{timestamps[i]}</span>" + ' ' + each for i,each in enumerate(summary_list)]
+    summary_list = [f"<span class='TimeStamp'><a href='https://www.youtube.com/watch?v={video_id}?t={get_sec(timestamps[i])}'>{timestamps[i]}</a></span>" + ' ' + each for i,each in enumerate(summary_list)]
 
 
 
@@ -269,7 +283,7 @@ elif summary:
     # Imitate loading progress
     my_bar = st.progress(0)
     for percent_complete in range(100):
-        time.sleep(random.uniform(0, 0.4))
+        time.sleep(random.uniform(0, 0.1))
         my_bar.progress(percent_complete + 1)
 
     summary = ''
@@ -277,8 +291,8 @@ elif summary:
         for line in f.readlines():
             summary+=line
     topics = pd.read_csv(f'topics/{video_id}.csv',index_col=0)
-    #topics = topics['Keys', 'Relevancy']
     topics = color_df(topics)
+
 
     with _col1:
         st.markdown(summary, unsafe_allow_html=True)

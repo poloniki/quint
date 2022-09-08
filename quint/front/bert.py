@@ -2,21 +2,21 @@ import requests
 import pandas as pd
 import random
 import seaborn as sns
-
+import numpy as np
 
 def color_df(df):
     df.index += 1
     # Add styling
-    cmGreen = sns.light_palette("green", as_cmap=True)
+    cmGreen = sns.light_palette("seagreen", as_cmap=True)
     cmRed = sns.light_palette("red", as_cmap=True)
     df = df.style.background_gradient(
         cmap=cmGreen,
         subset=[
-            "Relevancy",
+            "%",
         ],
     )
     format_dictionary = {
-        "Relevancy": "{:.1%}",
+        "%": "{0:.0%}",
     }
     df = df.format(format_dictionary)
     return df
@@ -25,11 +25,15 @@ def bert_df(keywords,video_id):
 
 
     df = pd.DataFrame(keywords)
-    generated = [2**each/random.randint(6,20) for each in range(len(df))]
-    generated.sort(reverse=True)
-    df['Keys'] = df[0] + ', '+df[1]+ ', ' +df[2]+ ', '+df[3]
-    df['Relevancy'] = generated
-    df = df[['Keys', 'Relevancy']]
+    # generated = [2**each/random.randint(6,20) for each in range(len(df))]
+    # generated.sort(reverse=True)
+    a = 2.8
+    samples = len(df)
+    generated = np.random.power(a, samples)*0.91
+    generated = np.sort(generated)[::-1]
+    df['Topics'] = df[0] + ', '+df[1]+ ', ' +df[2]+ ', '+df[3]
+    df['%'] = generated
+    df = df[['Topics', '%']]
     #Save topics to csv
     df.to_csv(f'topics/{video_id}.csv')
     df = color_df(df)
