@@ -33,7 +33,7 @@ def get_sec(time_str):
 
 
 layout="wide"
-st.set_page_config(page_title='Quint')
+st.set_page_config( page_title='Quint')
 st.set_option('deprecation.showPyplotGlobalUse', False)
 
 st.session_state['flag'] = False
@@ -68,6 +68,14 @@ main_html = '''
     .stApp {
     background-image: url("data:image/jpg;base64,%s");
     background-size: cover;
+    }
+    .css-1n76uvr {
+        width: 834px;
+        position: relative;
+        display: flex;
+        flex: 1 1 0%;
+        flex-direction: column;
+        gap: 1rem;
     }
 
     .st-cs {
@@ -109,9 +117,6 @@ main_html = '''
     </style>
     '''
 st.markdown(main_html, unsafe_allow_html=True)
-
-
-
 
 
 def main_page():
@@ -165,7 +170,7 @@ YouTubeVideo(video_id)
 
 text_file = f"{video_id}.txt"
 
-_col1, _col2 = st.columns([0.8,0.2])
+_col1, _col2 = st.columns([0.7,0.3])
 
 # First we check if we already have summary for some specifict podcast
 if (summary) & (text_file not in os.listdir("results/")):
