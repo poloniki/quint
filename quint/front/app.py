@@ -237,7 +237,7 @@ if (summary) & (text_file not in os.listdir("results/")):
     # # Create Html tags for best words and sents
     # summary_list = [ for each in summary_list]
     #Add timestamps to summaries
-    summary_list = [f"<span class='TimeStamp'><a href='https://www.youtube.com/watch?v={video_id}?t={get_sec(timestamps[i])}'>{timestamps[i]}</a></span>" + ' ' + each for i,each in enumerate(summary_list)]
+    summary_list = [f"<span class='TimeStamp'><a href='https://www.youtube.com/watch?v={video_id}&t={get_sec(timestamps[i])}'>{timestamps[i]}</a></span>" + ' ' + each for i,each in enumerate(summary_list)]
 
 
 
