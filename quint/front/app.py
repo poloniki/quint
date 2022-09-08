@@ -4,7 +4,7 @@ import streamlit as st
 import base64
 import time
 import random
-
+import seaborn as sns
 from time import sleep
 from pytube import YouTube
 from transformers import pipeline
@@ -19,6 +19,10 @@ from summary_api import summarize
 from timestamp import timestamping
 from youtube import video_name
 from getting_best_api import get_best
+from bert import get_bert, color_df
+import pandas as pd
+import random
+import numpy as np
 
 
 def get_sec(time_str):
@@ -28,9 +32,9 @@ def get_sec(time_str):
 
 
 
-#layout="wide"
+layout="wide"
 st.set_page_config(page_title='Quint')
-# st.set_option('deprecation.showPyplotGlobalUse', False)
+st.set_option('deprecation.showPyplotGlobalUse', False)
 
 st.session_state['flag'] = False
 
@@ -161,6 +165,8 @@ YouTubeVideo(video_id)
 
 text_file = f"{video_id}.txt"
 
+_col1, _col2 = st.columns([0.8,0.2])
+
 # First we check if we already have summary for some specifict podcast
 if (summary) & (text_file not in os.listdir("results/")):
     # VISUAL ELEMENT - starting
@@ -179,7 +185,9 @@ if (summary) & (text_file not in os.listdir("results/")):
     print('Starting punctuating')
     punctuated_text = punctuate(concatenated_text) ## Punctuate concatenated text
     my_bar.progress(progress + 30)
-
+    with open(f'transcripts/{video_id}_transcript.txt', 'w') as f:
+        f.write(punctuated_text)
+        f.close()
     # Now we need to chunk text into main parts
     chunked_text = chunk(punctuated_text) ## Returns list of chunks
     print(f'Chunked into {len(chunked_text)} chunks.')
@@ -191,13 +199,15 @@ if (summary) & (text_file not in os.listdir("results/")):
     ###### SUMMARIZATION PART #########
     # Create a list of ready summaries
     summary_list = [summarize(each) for each in chunked_text]
-    my_bar.progress(progress + 30)
-
     #Take out escape characters and punct which messes with API
     summary_list = list(map(lambda chunk : chunk.replace('\\','').replace('\"','') , summary_list))
+    my_bar.progress(progress + 30)
+
+
 
     # Create headlines from the summaries
-    headlines =[summarize(each, length=10) for each in summary_list]
+    headlines =[summarize(each, length=50) for each in summary_list]
+    headlines = list(map(lambda chunk : chunk.replace('\\','').replace('\"','') , headlines))
     my_bar.progress(progress + 10)
 
     # Add headlines to the summaries + get best with higlights
@@ -220,12 +230,18 @@ if (summary) & (text_file not in os.listdir("results/")):
 
     summary = f"<h2>{title}</h2> \n\n\n {summary}"
 
+    #Get bert topics as DF
+    topics = get_bert(punctuated_text,video_id)
+
 
 
     # Return the result to streamlit
-    markdown = st.markdown(summary, unsafe_allow_html=True)
-    #YouTubeVideo(video_id)
 
+
+    with _col1:
+        st.markdown(summary, unsafe_allow_html=True)
+    with _col2:
+        st.table(topics)
 
     #### SAVE TEXT FILE TO PROCESS LATER ####
     with open(f'results/{video_id}.txt', 'w') as f:
@@ -245,9 +261,8 @@ if (summary) & (text_file not in os.listdir("results/")):
 # If we already have the summary of some video - return it
 elif summary:
 
+    # Imitate loading progress
     my_bar = st.progress(0)
-
-
     for percent_complete in range(100):
         time.sleep(random.uniform(0, 0.4))
         my_bar.progress(percent_complete + 1)
@@ -256,5 +271,12 @@ elif summary:
     with open(f"results/{text_file}", 'r') as f:
         for line in f.readlines():
             summary+=line
-    st.markdown(summary, unsafe_allow_html=True)
+    topics = pd.read_csv(f'topics/{video_id}.csv',index_col=0)
+    #topics = topics['Keys', 'Relevancy']
+    topics = color_df(topics)
+
+    with _col1:
+        st.markdown(summary, unsafe_allow_html=True)
+    with _col2:
+        st.table(topics)
     st.video(link)
