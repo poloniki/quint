@@ -19,6 +19,7 @@ output_filepath = os.getenv('OUTPUP_PATH')
 
 app = FastAPI()
 
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allows all origins
