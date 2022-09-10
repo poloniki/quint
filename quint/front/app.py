@@ -162,7 +162,7 @@ col1, col2 = st.columns([0.8,0.2])
 
 
 with col1:
-    link = st.text_input('', 'https://www.youtube.com/watch?v=7ZUSVabB6N4', on_change=refresh_state)
+    link = st.text_input('', 'https://www.youtube.com/watch?v=RcYjXbSJBN8', on_change=refresh_state)
 
 
 with col2:
@@ -283,7 +283,7 @@ elif summary:
     # Imitate loading progress
     my_bar = st.progress(0)
     for percent_complete in range(100):
-        time.sleep(random.uniform(0, 0.1))
+        time.sleep(random.uniform(0.1, 0.4))
         my_bar.progress(percent_complete + 1)
 
     summary = ''
