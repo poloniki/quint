@@ -50,13 +50,6 @@ def upload(file: UploadFile = File(...)):
             # # Get audio file transcribtion
             transcript = tga.google_transcribe(audio_file_name)
 
-            if len(transcript) > 30000000:
-                try:
-                    topics = get_topics(transcript)
-                except:
-                    topics = 'Text is too short.'
-            else:
-                topics = 'Text is too short.'
             # Get colored highlights
             transcript = highlights.get_colored_transcript(transcript)
             # Create name for transcript
@@ -65,7 +58,7 @@ def upload(file: UploadFile = File(...)):
             tga.write_transcripts(transcript_filename ,transcript)
 
             # Return transcript to the api query
-            return  {'transcript' : transcript, 'topics':topics}
+            return  {'transcript' : transcript}
 
 
         except Exception as error:
