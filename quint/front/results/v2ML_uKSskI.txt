@@ -1,0 +1,20 @@
+<h2>Le Wagon in Berlin - Data Science Bootcamp 2021</h2> 
+
+
+ 0:00:01 <b>"Action is on the way to become a data scientist at liver gong in Berlin."</b>
+
+ 
+ 
+ action is on the way to become a data scientist at liver gong in <span class="BestWords">Berlin</span>. He's on the 12th day of a coding boot camp, which is one of the leading boot camps for coding in Europe.. 
+
+0:01:22 <b>"Next up, we will learn statistics and do some machine learning and deep learning, but right now we're working on the foundation."</b>
+
+ 
+ 
+ Next up, we will learn statistics and do some machine learning and deep learning, but right now we're still working on the foundation: how to get the data from different sources, how to connect them with the code, and how to deal with the data. It's hard for me to cope and deal with so many information. I admire data scientists.. 
+
+0:03:21 <b>"#1 tells #2 about #1's personal digital transformation."</b>
+
+ 
+ 
+ <span class="BestWords">#1</span> tells <span class="BestWords">#2</span> about #1's personal digital transformation. <span class="BestWords">#1</span> wants to finish the course and will keep updating <span class="BestWords">#2.</span>. 
