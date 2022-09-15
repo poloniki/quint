@@ -110,11 +110,9 @@ def write_transcripts(transcript_filename,transcript):
     f.write(transcript)
     f.close()
 
+# Function created to test functionality
 if __name__ == '__main__':
-    audio_file_name= 'JoeShort.wav'
+    audio_file_name= 'example.wav'
     transcript = google_transcribe(audio_file_name)
     transcript_filename = audio_file_name.split('.')[0] + '.txt'
     write_transcripts(transcript_filename,transcript)
-
-# if __name__ == "__main__":
-#     for audio_file_name in os.listdir(filepath):
