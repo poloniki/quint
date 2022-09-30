@@ -5,7 +5,7 @@ def video_name(id):
     querystring = {"id":id,"hl":"en","gl":"US"}
 
     headers = {
-        "X-RapidAPI-Key": "d59a70c161msh031072ca8ec19f2p119afejsnf4860e522f15",
+        "X-RapidAPI-Key": "",
         "X-RapidAPI-Host": "youtube138.p.rapidapi.com"
     }
 

@@ -44,7 +44,7 @@ python-multipart
 pydub
 soundfile
 bertopic
-protobuf==3.20
+protobuf==3.20.2
 youtube_transcript_api
 
 #Text process
