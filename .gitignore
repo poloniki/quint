@@ -4,7 +4,7 @@ raw_data/
 .env
 .env.yaml
 **/frontend/
-.gitignore
+*.gitignore
 
 # System files
 .DS_Store
