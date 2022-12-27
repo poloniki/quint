@@ -2,23 +2,23 @@ from bertopic import BERTopic
 from sklearn.feature_extraction.text import TfidfVectorizer
 from quint.chunk.preprocess import clean_text
 
+def get_topics(text: str) -> list:
+    """
+    Extract main topics from a block of text.
 
-# Train BERTopic with a custom CountVectorizer
+    Parameters:
+    text (str): A block of text from which to extract topics.
 
-def get_topics(text):
-    # Load text from result of prediction
+    Returns:
+    list: A list of main topics extracted from the text.
+    """
     print("Start to get topics")
-    #text = get_text_data(path_to_text)
     # Clean sentences
     text = text.replace("?", ".")
     sentences_clean = clean_text(text)
-    # Initiate vectorizer model
-    #vectorizer_model = TfidfVectorizer(ngram_range=(1, 3), stop_words="english")
-    # Model topics
+    # Initiate the BERTopic model
     topic_model = BERTopic(language="english", nr_topics='auto', n_gram_range=(1, 3))
-    #topic_model = BERTopic(language="english", calculate_probabilities=True, verbose=True, nr_topics='auto', n_gram_range=(1, 3),diversity=0.5)
-
-    # Get main topics
+    # Fit the model to the text and get the main topics
     topics = topic_model.fit_transform(sentences_clean)
     topics = topic_model.get_topics()
     print('Finish topics')

@@ -1,12 +1,14 @@
 from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI,Body
 from pydantic import BaseModel
 from quint.transcribtion import google_api as tga
 from quint.transcribtion import highlights
 from quint.chunk.chunking import get_middle_points
 from quint.transcribtion.highlights import create_embedding,create_df
 import os
+import shutil
+
 output_filepath = os.getenv('OUTPUP_PATH')
 
 app = FastAPI()
@@ -31,95 +33,80 @@ def root():
 
 
 @app.post("/transcript")
-def upload(file: UploadFile = File(...)):
-    """ Endpoint which allows you to upload audio and get transcript in a text format.
 
-    Args:
-        file (UploadFile, optional): Audio file of WAV or FLAC format.
+
+def upload(file: UploadFile = File(...)):
+    """
+    Endpoint which allows you to upload an audio file and get its transcript in text format.
+
+    Parameters:
+    file (UploadFile, optional): Audio file of WAV or FLAC format.
 
     Returns:
-        dict: dictionary with transcript string as a value
+    dict: Dictionary with transcript string as a value.
     """
     # Get the audio filename
-    audio_file_name= file.filename
+    audio_file_name = file.filename
     # Check if we already have this file locally
     if audio_file_name not in os.listdir("."):
         try:
-            # Read the file first
-            contents = file.file.read()
+            # Save the audio file locally
             with open(file.filename, 'wb') as f:
                 # Get audio file name and change its format to wav
                 audio_file_name = audio_file_name.split('.')[0] + '.wav'
-                # Save audio file locally
-                f.write(contents)
-                f.close()
-
-
-            # Get audio file transcribtion
+                # Stream the file contents directly to disk using shutil
+                shutil.copyfileobj(file.file, f)
+            # Get audio file transcription
             transcript = tga.google_transcribe(audio_file_name)
-
             # Highlight: best sentences best sentences (most descriptive ones), names, products, companies, dates
             transcript = highlights.get_colored_transcript(transcript)
             # Create name for transcript
             transcript_filename = audio_file_name.split('.')[0] + '.txt'
-            # Save transript file locally
-            tga.write_transcripts(transcript_filename ,transcript)
-
-            return  {'transcript' : transcript}
-
-        # Catch an error and display it to user
+            # Save transcript file locally
+            tga.write_transcripts(transcript_filename, transcript)
+            return {'transcript': transcript}
+        # Catch an error and display it to the user
         except Exception as error:
             return {"message": error}
-
-        finally:
-            file.file.close()
-
-    # If we already had this audio file than return ready transcript to the user
+    # If we already had this audio file, then return the ready transcript to the user
+    transcript = []
+    # Read the transcript file line by line
     with open(output_filepath+file.filename.split('.')[0] + '.txt') as f:
-        # Get audio file name
-        transcript = f.readlines()
-        f.close()
+        for line in f:
+            transcript.append(line)
+    return {'transcript': transcript}
 
-    return {'transcript':transcript}
-
-# Create class that can take input as a text in a post request
-class Body(BaseModel):
-    text: str
-
-
-@app.post("/chunk")
 def chunking_text(body: Body):
-    """ This endpoint takes row text and splits it into reasonable chunks.
+    """
+    This endpoint takes a block of text and splits it into reasonable chunks.
 
-    Args:
-        str: takes text in the form of string
+    Parameters:
+    body (Body): A dictionary containing the text to be chunked.
 
     Returns:
-        dict: returns list of text paragraphs
+    dict: Returns a list of text paragraphs.
     """
     # Extract text from the endpoint input
     input_text = body.text
-    # Split text to sentences and get their embedding, we use version=2 here because it specifies, that input is a text
-    sentences,embeddings = create_embedding(input_text , version=2)
-    # Create dataframe which returns sentences with generated timestamps
-    df = create_df(sentences,embeddings)
-
+    # Split text to sentences and get their embedding, we use version=2 here because it specifies that the input is text
+    sentences, embeddings = create_embedding(input_text, version=2)
+    # Create a dataframe which returns sentences with generated timestamps
+    df = create_df(sentences, embeddings)
     # Get the points where we need to split the text
-    true_middle_points=get_middle_points(df,embeddings)
-    #Initiate text to append to
-    text=''
+    true_middle_points = get_middle_points(embeddings)
+    # Initiate text to append to
+    text = ''
     for num, each in enumerate(df['sentence']):
         # Chunk the text
-        # If index of row is equal to split point than add two new lines to the text
+        # If the index of the row is equal to a split point, add two new lines to the text
         if num in true_middle_points:
-            text+=f' \n \n {each}. '
+            text += f' \n \n {each}. '
         else:
-        # Append new line of text with no new line if it is not the splitting points list
-            text+=f'{each}. '
-
-    # Split text by new lines notation to get list of texts - paragraphs
+            # Append a new line of text with no new line if it is not in the splitting points list
+            text += f'{each}. '
+    # Split text by new lines notation to get a list of texts - paragraphs
     clean_chunks = text.split('\n \n')
-    return {'for_summary':clean_chunks}
+    return {'for_summary': clean_chunks}
 
 
 @app.post("/best")
