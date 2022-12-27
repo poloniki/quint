@@ -1,8 +1,5 @@
-# Data analysis
-- Document here the project: quint
-- Description: Project Description
-- Data Source:
-- Type of analysis:
+# Description
+Description: "Quintessentia" aims to make it easier for users to understand and navigate podcasts by providing summaries and timestamps. The project involves taking audio podcasts and converting them to text, then punctuating and chunking the text into meaningful parts. It also involves summarizing each part and timestamping it to allow users to easily navigate the podcast. The project creates a chart of the best topics in the podcast and provides a summary of the entire podcast.
 
 Please document the project the better you can.
 
@@ -15,24 +12,6 @@ Create virtualenv and install the project:
 sudo apt-get install virtualenv python-pip python-dev
 deactivate; virtualenv ~/venv ; source ~/venv/bin/activate ;\
     pip install pip -U; pip install -r requirements.txt
-```
-
-Unittest test:
-```bash
-make clean install test
-```
-
-Check for quint in gitlab.com/{group}.
-If your project is not set please add it:
-
-- Create a new project on `gitlab.com/{group}/quint`
-- Then populate it:
-
-```bash
-##   e.g. if group is "{group}" and project_name is "quint"
-git remote add origin git@github.com:{group}/quint.git
-git push -u origin master
-git push -u origin --tags
 ```
 
 # Main functionality of the API
