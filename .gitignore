@@ -1,4 +1,5 @@
-
+Kaldi.ipynb
+Scraping Website.ipynb
 raw_data/
 **/__pycache__/
 .env
@@ -19,6 +20,7 @@ dist/
 *.vscode
 
 # Data files
+*.rar
 *.csv
 *.sqlite
 *.zip
