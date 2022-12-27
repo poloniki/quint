@@ -24,6 +24,7 @@ dist/
 *.csv
 *.sqlite
 *.zip
+*.txt
 training_outputs/
 
 *.sublime-project

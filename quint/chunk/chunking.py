@@ -1,82 +1,50 @@
-# Load neccesary libraries
-from scipy.signal import butter,filtfilt
-from sklearn.cluster import KMeans
-from scipy import sparse
-from sklearn.metrics.pairwise import cosine_similarity
+# First let import the most necessary libs
 import pandas as pd
 import numpy as np
-
-# Set settings for lowpass filter
-T = 50.0        # Sample Period
-fs = 10.0       # sample rate, Hz
-cutoff = 3      # desired cutoff frequency of the filter, Hz ,      slightly higher than actual 1.2 Hz
-nyq = 11 * fs   # Nyquist Frequency
-order = 6       # 6  # sin wave can be approx represented as quadratic
-n = int(T * fs) # total number of samples
+# Library to import pre-trained model for sentence embeddings
+# Calculate similarities between sentences
+from sklearn.metrics.pairwise import cosine_similarity
+# package for finding local minimas
+from scipy.signal import argrelextrema
+import math
 
 
-def butter_lowpass_filter(data, cutoff:int, order:int):
-    """ Function returns smoothed out array of sentences cosine similarities.
+def rev_sigmoid(x:float)->float:
+    return (1 / (1 + math.exp(0.5*x)))
 
-    Args:
-        data (list/array): array of sentences cosine similarities
-        cutoff (int): desired cutoff frequency of the filter
-        order (int): parameter for filter
+def activate_similarities(similarities:np.array, p_size=10)->np.array:
+        """ Function returns list of weighted sums of activated sentence similarities
+        Args:
+            similarities (numpy array): it should square matrix where each sentence corresponds to another with cosine similarity
+            p_size (int): number of sentences are used to calculate weighted sum
+        Returns:
+            list: list of weighted sums
+        """
+        # To create weights for sigmoid function we first have to create space. P_size will determine number of sentences used and the size of weights vector.
+        x = np.linspace(-10,10,p_size)
+        # Then we need to apply activation function to the created space
+        y = np.vectorize(rev_sigmoid)
+        # Because we only apply activation to p_size number of sentences we have to add zeros to neglect the effect of every additional sentence and to match the length ofvector we will multiply
+        activation_weights = np.pad(y(x),(0,similarities.shape[0]-p_size))
+        ### 1. Take each diagonal to the right of the main diagonal
+        diagonals = [similarities.diagonal(each) for each in range(0,similarities.shape[0])]
+        ### 2. Pad each diagonal by zeros at the end. Because each diagonal is different length we should pad it with zeros at the end
+        diagonals = [np.pad(each, (0,similarities.shape[0]-len(each))) for each in diagonals]
+        ### 3. Stack those diagonals into new matrix
+        diagonals = np.stack(diagonals)
+        ### 4. Apply activation weights to each row. Multiply similarities with our activation.
+        diagonals = diagonals * activation_weights.reshape(-1,1)
+        ### 5. Calculate the weighted sum of activated similarities
+        activated_similarities = np.sum(diagonals, axis=0)
+        return activated_similarities
 
-    Returns:
-        numpy array: smoothed out sentence similarities
-    """
+def get_middle_points(embeddings:np.array) -> list:
+    # Create similarities matrix
+    similarities = cosine_similarity(embeddings)
 
-    normal_cutoff = cutoff / nyq
-    # Get the filter coefficients
-    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    # Let's apply our function. For long sentences i reccomend to use 10 or more sentences
+    activated_similarities = activate_similarities(similarities, p_size=10)
 
-    # Get the smoothed array
-    y = filtfilt(b, a, data)
-    return y
-
-def get_middle_points(df:pd.DataFrame,embeddings:np.array) -> list:
-    """ Function returns split points to create paragraphs in text
-
-    Args:
-        df (pandas Dataframe): dataframe should consist of sentenses and timestamps
-        embeddings (numpy array): embedded sentences
-
-    Returns:
-        list: list of split points
-    """
-
-    # Creating sparse matrix for cosine similarities to be calculated
-    A_sparse = sparse.csr_matrix(embeddings)
-    # Get the matrix of cosine similarities of each sentence to each sentence
-    similarities = cosine_similarity(A_sparse)
-    # Get mean similarity of each sentence for the whole text
-    mean_similarity = similarities.mean(axis=0)
-    # Add column of mean similarity to the input df which contains sentences
-    df['mean_similarity'] = mean_similarity
-
-    try:
-        # Smooth out cosine similarity to get rid of the noise
-        df['smooth'] = butter_lowpass_filter(mean_similarity,cutoff, fs, order)
-        # Create a threshold to select outliers
-        outlier = df['smooth'].mean() - df['smooth'].std()
-        # Filter out everything whic does not
-        df['masked'] = df['smooth'] > outlier
-        df['masked'] = df['masked'].astype(int)
-        df = df.reset_index()
-
-        time_diff = df.loc[df.masked==0].copy()
-        time_diff['diff_cum'] = time_diff['cum'].diff().fillna(0.0)
-        time_diff['outliers'] = time_diff['diff_cum'].apply(lambda x: x > time_diff['diff_cum'].mean()+time_diff['diff_cum'].std(ddof=0))
-        total_categories = time_diff['outliers'].sum() +1
-
-        # Create dataframe for selecting zones which represent lower bound of the sin-like graph
-        X = df[['cum','masked']]
-        kmeans = KMeans(n_clusters=total_categories, random_state=0).fit(X)
-        df['label'] = kmeans.labels_
-        change_points = df.groupby('label').median()['index'] -1
-        true_middle_points = [min(df['index'], key=lambda x:abs(x-each)) for each in change_points]
-    except:
-        true_middle_points=[0]
-
-    return true_middle_points
+    ### 6. Find relative minima of our vector. For all local minimas and save them to variable with argrelextrema function
+    minmimas = argrelextrema(activated_similarities, np.less, order=2) #order parameter controls how frequent should be splits. I would not reccomend changing this parameter.
+    return minmimas
