@@ -1,17 +1,20 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI,Body
-from pydantic import BaseModel
-from quint.transcribtion import google_api as tga
-from quint.transcribtion import highlights
-from quint.chunk.chunking import get_middle_points
-from quint.transcribtion.highlights import create_embedding,create_df
 import os
 import shutil
+import logging
 
-output_filepath = os.getenv('OUTPUP_PATH')
+from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+from quint.chunk.chunking import get_middle_points
+from quint.transcribtion import google_api as tga
+from quint.transcribtion import highlights
+from quint.transcribtion.highlights import create_embedding, create_df
+
+output_filepath = os.getenv('OUTPUT_PATH')
 
 app = FastAPI()
+logging.basicConfig(level=logging.DEBUG)
 
 app.add_middleware(
     CORSMiddleware,
@@ -20,6 +23,11 @@ app.add_middleware(
     allow_methods=["*"],  # Allows all methods
     allow_headers=["*"],  # Allows all headers
 )
+
+
+class Body(BaseModel):
+    body: str = None
+
 
 # Main page welcome greeting
 @app.get("/")
@@ -33,8 +41,6 @@ def root():
 
 
 @app.post("/transcript")
-
-
 def upload(file: UploadFile = File(...)):
     """
     Endpoint which allows you to upload an audio file and get its transcript in text format.
@@ -76,6 +82,8 @@ def upload(file: UploadFile = File(...)):
             transcript.append(line)
     return {'transcript': transcript}
 
+
+@app.post("/chunk")
 def chunking_text(body: Body):
     """
     This endpoint takes a block of text and splits it into reasonable chunks.
@@ -87,7 +95,7 @@ def chunking_text(body: Body):
     dict: Returns a list of text paragraphs.
     """
     # Extract text from the endpoint input
-    input_text = body.text
+    input_text = body.body
     # Split text to sentences and get their embedding, we use version=2 here because it specifies that the input is text
     sentences, embeddings = create_embedding(input_text, version=2)
     # Create a dataframe which returns sentences with generated timestamps
@@ -99,29 +107,29 @@ def chunking_text(body: Body):
     for num, each in enumerate(df['sentence']):
         # Chunk the text
         # If the index of the row is equal to a split point, add two new lines to the text
-        if num in true_middle_points:
+        if num in true_middle_points[0]:
             text += f' \n \n {each}. '
         else:
             # Append a new line of text with no new line if it is not in the splitting points list
             text += f'{each}. '
     # Split text by new lines notation to get a list of texts - paragraphs
     clean_chunks = text.split('\n \n')
-    return {'for_summary': clean_chunks}
+    return {'output': clean_chunks}
 
 
 @app.post("/best")
-def highligh_words(body: Body):
+def highlight_words(body: Body):
     """ This endpoint takes text ad input and returns text with highlighted: best sentences (most descriptive ones), names, products, companies,
     dates.
 
     Args:
-        str: row text
+        body: row text
 
     Returns:
         dict: returns a dictionary where value is a text with highlights
     """
     # Extract text from the endpoint input
-    input_text = body.text
+    input_text = body.body
     # Get the highlighted transcript
     transcript = highlights.get_colored_transcript(input_text)
-    return {'edited':transcript}
+    return {'edited': transcript}
