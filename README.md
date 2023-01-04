@@ -37,6 +37,8 @@ Download the Python spacy model:
 ```shell
 python -m spacy download en_core_web_lg
 ```
+> Note: the above should fix an error such as `OSError: Can't find model 'en_core_web_lg'`.  
+
 Now from the `quint/` directory, run:
 ```shell
 python scripts/serve_api.py
