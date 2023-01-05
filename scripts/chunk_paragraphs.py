@@ -73,7 +73,7 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
         if _file[-3:] != "txt":
             logger.info("%s: Not txt file. Skipping...", _file)
             continue
-        _out_file = f"{_file}_out.txt"
+        _out_file = f"{_file.split('.')[0]}_out.txt"
         logger.info(
             "[%s/%s] Loading file contents of %s to API server on %s...",
             _idx + 1,
