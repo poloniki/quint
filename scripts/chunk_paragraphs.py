@@ -74,16 +74,17 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
             logger.info("%s: Not txt file. Skipping...", _file)
             continue
         _out_file = f"{_file}_out.txt"
-        with open(os.path.join(input_dir, _file), "r", encoding="ascii", errors="ignore") as input_file:
-            _input_contents: str = input_file.read().encode("ascii", errors="ignore").decode().replace("\r\n", " ").replace("\n", " ")
-
         logger.info(
-            "[%s/%s] Sending file contents of %s to API server on %s...",
+            "[%s/%s] Loading file contents of %s to API server on %s...",
             _idx + 1,
             len(_files),
             os.path.join(input_dir, _file),
             args.H
         )
+
+        with open(os.path.join(input_dir, _file), "r", encoding="ascii", errors="ignore") as input_file:
+            _input_contents: str = input_file.read().encode("ascii", errors="ignore").decode().replace("\r\n", " ").replace("\n", " ")
+
         r = requests.post("http://" + args.H + "/chunk", json={
             "body": _input_contents
         })
