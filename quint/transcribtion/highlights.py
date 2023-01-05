@@ -4,6 +4,7 @@ from scipy import sparse
 import numpy as np
 import pandas as pd
 import os
+import re
 from quint.chunk.chunking import get_middle_points
 from quint.transcribtion.words_outline import outline
 
@@ -25,8 +26,9 @@ def create_embedding(path, version=1):
     else:
         doc = path.replace('/n', '\n')
     # Replace question marks with period and split into sentences
-    doc = doc.replace('?', '. ')
-    sentences = doc.split('. ')
+    # doc = doc.replace('?', '. ')
+    # sentences = doc.split('. ')
+    sentences = re.split(r'\.\s|\?\s|!\s', doc)
     # Encode the sentences using the model
     embeddings = model.encode(sentences)
     print('Embeddings for highlights created')
