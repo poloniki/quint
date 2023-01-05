@@ -28,7 +28,7 @@ def create_embedding(path, version=1):
     # Replace question marks with period and split into sentences
     # doc = doc.replace('?', '. ')
     # sentences = doc.split('. ')
-    sentences = re.findall('.*?[.!\?]', doc)
+    sentences = re.findall('.*?[.!\?]\s', doc)
     # Encode the sentences using the model
     embeddings = model.encode(sentences)
     print('Embeddings for highlights created')
