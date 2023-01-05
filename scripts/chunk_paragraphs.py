@@ -46,7 +46,7 @@ port: str
 
 def chunk_paragraphs_file(input_file: str, output: str):
     logger.info("Reading %s...", input_file)
-    with open(input_file, "r") as input_file:
+    with open(input_file, "r", encoding="ascii", errors="ignore") as input_file:
         _input_contents: str = input_file.read()
 
     _input_contents = _input_contents.encode("ascii", errors="ignore").decode().replace("\r\n", " ").replace("\n", " ")
@@ -57,13 +57,13 @@ def chunk_paragraphs_file(input_file: str, output: str):
 
     try:
         logger.info("Writing to %s...", output)
-        with open(output, "w+") as output_file:
+        with open(output, "w+", encoding="ascii", errors="ignore") as output_file:
             output_file.write("\n\n".join([i.strip() for i in r.json()["output"]]))
         logger.info("Done!")
     except:
-        logger.error("Error, skipping file %s", _file)
-        with open(output_dir + "\\failed_files.txt", "a+") as failed_files:
-            failed_files.write(_file + "\n")
+        logger.error("Error, skipping file %s", input_file)
+        with open(os.path.join(output, "failed_files.txt"), "a+") as failed_files:
+            failed_files.write(input_file + "\n")
 
 
 def chunk_paragraphs_dir(input_dir: str, output_dir: str):
@@ -74,15 +74,14 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
             logger.info("%s: Not txt file. Skipping...", _file)
             continue
         _out_file = f"{_file}_out.txt"
-        with open(f"{input_dir}\{_file}", "r") as input_file:
+        with open(os.path.join(input_dir, _file), "r", encoding="ascii", errors="ignore") as input_file:
             _input_contents: str = input_file.read().encode("ascii", errors="ignore").decode().replace("\r\n", " ").replace("\n", " ")
 
         logger.info(
-            "[%s/%s] Sending file contents of %s/%s to API server on %s...",
+            "[%s/%s] Sending file contents of %s to API server on %s...",
             _idx + 1,
             len(_files),
-            input_dir,
-            _file,
+            os.path.join(input_dir, _file),
             args.H
         )
         r = requests.post("http://" + args.H + "/chunk", json={
@@ -90,12 +89,13 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
         })
 
         try:
-            logger.info("Writing to %s/%s...", output_dir, _out_file)
-            with open(f"{output_dir}\{_out_file}", "w+") as output_file:
+            logger.info("Writing to %s...", os.path.join(output_dir, _out_file))
+            with open(os.path.join(output_dir, _out_file), "w+", encoding="ascii", errors="ignore") as output_file:
                 output_file.write("\n\n".join([i.strip() for i in r.json()["output"]]))
+            # TODO: move successful source to "done" folder
         except:
             logger.error("Error, skipping file %s", _file)
-            with open(output_dir + "\\failed_files.txt", "a+") as failed_files:
+            with open(os.path.join(output_dir, "failed_files.txt"), "a+") as failed_files:
                 failed_files.write(_file + "\n")
             continue
     logger.info("Done! Processed files into %s", output_dir)
@@ -115,13 +115,17 @@ def main():
     if os.path.isdir(args.i):
         logger.info("Input is a directory, assuming batch mode")
         if not os.path.exists(args.o):
-            _c = input("Path: %s does not exist. Create directory? [Y,n]" % args.o)
+            _c = input("Output path: %s does not exist. Create directory? [Y,n]" % args.o)
             if _c not in ["n", "N", "No", "NO", "no"]:
                 logger.info("Creating directory: %s...", args.o)
                 os.mkdir(args.o)
             else:
                 logger.warning("Exiting due to no usable output directory...")
                 sys.exit(1)
+        if not os.path.exists(os.path.join(args.i, "done")):
+            _c = input("Input done path: %s does not exist. Create directory? [Y,n]" % os.path.join(args.i, "done"))
+            if _c not in ["n", "N", "No", "NO", "no"]:
+                logger.info("Creating input done path: %s...", os.path.join(args.i, "done"))
         chunk_paragraphs_dir(args.i, args.o)
     elif os.path.isfile(args.i):
         logger.info("Input is a single file, assuming single mode")
