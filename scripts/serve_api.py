@@ -20,4 +20,4 @@ if len(sys.argv) > 1 and sys.argv[1] in ["--help", "-help", "-h", "/?"]:
 	sys.exit(0)
 
 OUTPUT_DIR = sys.argv[1] if len(sys.argv) > 1 else os.getcwd()
-os.system(f"OUTPUT_PATH=${OUTPUT_DIR} uvicorn quint.api.fast:app")
+os.system(f"OUTPUT_PATH=${OUTPUT_DIR} uvicorn quint.api.fast:app --host=0.0.0.0")
