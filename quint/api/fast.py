@@ -108,10 +108,10 @@ def chunking_text(body: Body):
         # Chunk the text
         # If the index of the row is equal to a split point, add two new lines to the text
         if num in true_middle_points[0]:
-            text += f' \n \n {each}. '
+            text += f' \n \n {each} '
         else:
             # Append a new line of text with no new line if it is not in the splitting points list
-            text += f'{each}. '
+            text += f'{each} '
     # Split text by new lines notation to get a list of texts - paragraphs
     clean_chunks = text.split('\n \n')
     return {'output': clean_chunks}
