@@ -92,8 +92,9 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
             logger.info("Writing to %s...", os.path.join(output_dir, _out_file))
             with open(os.path.join(output_dir, _out_file), "w+", encoding="ascii", errors="ignore") as output_file:
                 output_file.write("\n\n".join([i.strip() for i in r.json()["output"]]))
-            # TODO: move successful source to "done" folder
-        except:
+            os.rename(os.path.join(input_dir, _file), os.path.join(os.path.join(input_dir, "done"), _file))
+            logger.info("Moved successful input to %s", os.path.join(os.path.join(input_dir, "done"), _file))
+        except ValueError:
             logger.error("Error, skipping file %s", _file)
             with open(os.path.join(output_dir, "failed_files.txt"), "a+") as failed_files:
                 failed_files.write(_file + "\n")
@@ -126,6 +127,7 @@ def main():
             _c = input("Input done path: %s does not exist. Create directory? [Y,n]" % os.path.join(args.i, "done"))
             if _c not in ["n", "N", "No", "NO", "no"]:
                 logger.info("Creating input done path: %s...", os.path.join(args.i, "done"))
+                os.mkdir(os.path.join(args.i, "done"))
         chunk_paragraphs_dir(args.i, args.o)
     elif os.path.isfile(args.i):
         logger.info("Input is a single file, assuming single mode")
