@@ -99,7 +99,8 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
                         "Output file contains non-ASCII characters. Moving output to %s...",
                         os.path.join(os.path.join(output_dir, "sus"), _out_file)
                     )
-                    os.mkdir(os.path.join(output_dir, "sus"))
+                    if not os.path.isdir(os.path.join(output_dir, "sus")):
+                        os.mkdir(os.path.join(output_dir, "sus"))
                     os.rename(
                         os.path.join(output_dir, _out_file),
                         os.path.join(os.path.join(output_dir, "sus"), _out_file)
