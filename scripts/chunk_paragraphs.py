@@ -101,6 +101,7 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
                         os.path.join("text_chunked_out_sus", _out_file)
                     )
                     _has_unicode = True
+            # Fixed indentations?
             if _has_unicode:
                 os.replace(
                     os.path.join(output_dir, _out_file),
