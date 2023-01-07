@@ -93,17 +93,19 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
             logger.info("Writing to %s...", os.path.join(output_dir, _out_file))
             with open(os.path.join(output_dir, _out_file), "w+", encoding="utf-8", errors="ignore") as output_file:
                 output_file.write("\n\n".join([i.strip() for i in r.json()["output"]]))
+            _has_unicode: bool = True
             with open(os.path.join(output_dir, _out_file), "r", encoding="utf-8", errors="ignore") as output_file:
                 if not output_file.read().isascii():
                     logger.warning(
                         "Output file contains non-ASCII characters. Moving output to %s...",
                         os.path.join(os.path.join(output_dir, "sus"), _out_file)
                     )
-                    if not os.path.isdir(os.path.join(output_dir, "sus")):
-                        os.mkdir(os.path.join(output_dir, "sus"))
+            if _has_unicode:
+                 if not os.path.isdir("text_chunked_out_sus")):
+                        os.mkdir("text_chunked_out_sus)
                     os.rename(
                         os.path.join(output_dir, _out_file),
-                        os.path.join(os.path.join(output_dir, "sus"), _out_file)
+                        os.path.join("text_chunked_out_sus", _out_file)
                     )
                 else:
                     os.replace(os.path.join(input_dir, _file), os.path.join(os.path.join(input_dir, "done"), _file))
