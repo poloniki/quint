@@ -98,13 +98,11 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
                 if not output_file.read().isascii():
                     logger.warning(
                         "Output file contains non-ASCII characters. Moving output to %s...",
-                        os.path.join(os.path.join(output_dir, "sus"), _out_file)
+                        os.path.join("text_chunked_out_sus", _out_file)
                     )
                     _has_unicode = True
             if _has_unicode:
-                 if not os.path.isdir("text_chunked_out_sus")):
-                        os.mkdir("text_chunked_out_sus)
-                    os.rename(
+                    os.replace(
                         os.path.join(output_dir, _out_file),
                         os.path.join("text_chunked_out_sus", _out_file)
                     )
@@ -145,6 +143,8 @@ def main():
             if _c not in ["n", "N", "No", "NO", "no"]:
                 logger.info("Creating input done path: %s...", os.path.join(args.i, "done"))
                 os.mkdir(os.path.join(args.i, "done"))
+        if not os.path.isdir("text_chunked_out_sus")):
+                os.mkdir("text_chunked_out_sus)
         chunk_paragraphs_dir(args.i, args.o)
     elif os.path.isfile(args.i):
         logger.info("Input is a single file, assuming single mode")
