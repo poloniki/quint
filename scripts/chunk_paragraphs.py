@@ -106,8 +106,6 @@ def chunk_paragraphs_dir(input_dir: str, output_dir: str):
                     os.path.join(output_dir, _out_file),
                     os.path.join("text_chunked_out_sus", _out_file)
                 )
-            else:
-                os.replace(os.path.join(input_dir, _file), os.path.join(os.path.join(input_dir, "done"), _file))
                 logger.info("Moved successful input to %s", os.path.join(os.path.join(input_dir, "done"), _file))
         except (ValueError, requests.exceptions.JSONDecodeError):
             logger.error("Error, skipping file %s", _file)
