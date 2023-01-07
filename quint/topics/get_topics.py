@@ -14,7 +14,6 @@ def get_topics(text: str) -> list:
     """
     print("Start to get topics")
     # Clean sentences
-    text = text.replace("?", ".")
     sentences_clean = clean_text(text)
     # Initiate the BERTopic model
     topic_model = BERTopic(language="english", nr_topics='auto', n_gram_range=(1, 3))

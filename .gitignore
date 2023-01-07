@@ -1,6 +1,7 @@
 Kaldi.ipynb
 Scraping Website.ipynb
 raw_data/
+.idea/
 **/__pycache__/
 .env
 .env.yaml
