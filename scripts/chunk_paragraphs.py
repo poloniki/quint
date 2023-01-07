@@ -143,7 +143,7 @@ def main():
                 logger.info("Creating input done path: %s...", os.path.join(args.i, "done"))
                 os.mkdir(os.path.join(args.i, "done"))
         if not os.path.isdir("text_chunked_out_sus"):
-                os.mkdir("text_chunked_out_sus)
+            os.mkdir("text_chunked_out_sus")
         chunk_paragraphs_dir(args.i, args.o)
     elif os.path.isfile(args.i):
         logger.info("Input is a single file, assuming single mode")
