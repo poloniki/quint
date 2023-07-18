@@ -1,10 +1,14 @@
-name: ci
+name: Build
 
 on:
   push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   docker:
+    name: Docker Build
     runs-on: ubuntu-latest
     steps:
 
