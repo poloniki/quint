@@ -5,9 +5,11 @@ twine
 wheel>=0.29
 python-dev-tools
 # data science
-numpy
-pandas
-scikit-learn
+numpy~=1.23.5
+pandas~=1.5.2
+scikit-learn~=1.2.0
+sklearn~=0.0.post1
+
 
 # tests/linter
 black
@@ -21,7 +23,7 @@ gcsfs
 google-cloud-storage
 mlflow
 s3fs
-fastapi
+fastapi~=0.88.0
 pytz
 uvicorn
 
@@ -40,13 +42,16 @@ memoized-property
 termcolor
 python-multipart
 # new
-pydub
+pydub~=0.25.1
 soundfile
-bertopic
+bertopic~=0.12.0
 protobuf==3.20.2
 youtube_transcript_api
 
 #Text process
-spacy
-scipy
+spacy~=3.4.4
+scipy~=1.9.3
 youtube_transcript_api
+
+pydantic~=1.10.4
+nltk~=3.8.1
