@@ -5,7 +5,6 @@ raw_data/
 **/__pycache__/
 .env
 .env.yaml
-**/frontend/
 *.gitignore
 
 # System files
