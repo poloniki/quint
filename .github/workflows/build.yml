@@ -7,7 +7,6 @@ jobs:
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    file: Dockerfile.jax
 
     steps:
       - name: Set up QEMU
@@ -19,4 +18,5 @@ jobs:
       - name: Build
         uses: docker/build-push-action@v4
         with:
+          file: Dockerfile.jax
           push: false
