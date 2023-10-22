@@ -2,7 +2,7 @@ import pysbd
 from sentence_transformers import SentenceTransformer
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
-seg = pysbd.Segmenter(language="en", clean=True)
+seg = pysbd.Segmenter(language="en", clean=False)
 
 
 def create_embedding(text: str = None):
