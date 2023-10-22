@@ -67,7 +67,7 @@ def get_colored_transcript(text):
     str: The highlighted version of the input text.
     """
     # Create embeddings for the input text
-    sentences, embeddings = create_embedding(text, version=2)
+    sentences, embeddings = create_embedding(text)
     # Create a dataframe of sentence and embedding data
     df = create_df(sentences, embeddings)
     # Get the middle points in the dataframe

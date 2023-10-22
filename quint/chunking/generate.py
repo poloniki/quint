@@ -21,7 +21,7 @@ def get_chunks(input_text):
         raise ValueError("The provided input text is empty.")
 
     try:
-        sentences, embeddings = create_embedding(input_text, is_path=False)
+        sentences, embeddings = create_embedding(input_text)
     except Exception as e:
         raise RuntimeError(f"Error generating embeddings for the input text. {str(e)}")
 
