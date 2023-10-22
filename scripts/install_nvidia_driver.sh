@@ -18,4 +18,5 @@ sudo apt autoclean -y
 echo "Installing nvidia-driver-535..."
 echo "Y" | sudo apt install nvidia-driver-535
 
+# Congrats =)
 echo "Done!"
