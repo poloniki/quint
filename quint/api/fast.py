@@ -121,8 +121,8 @@ def chunking_text(body: Body):
     return {"output": chunks}
 
 
-@app.post("/best")
-def highlight_words(body: Body):
+@app.post("/best_sentence")
+def best_sentence(body: Body):
     """
     Endpoint that analyzes the given text to identify and highlight the most descriptive sentences.
     Currently, it returns the best sentence index based on the embeddings.
@@ -136,7 +136,7 @@ def highlight_words(body: Body):
               Example: {"best_sentence_index": 5}
 
     Usage:
-        POST /best
+        POST /best_sentence
         {
             "body": "Your raw text here..."
         }
