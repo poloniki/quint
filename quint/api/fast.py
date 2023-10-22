@@ -149,7 +149,7 @@ def best_sentence(body: Body):
     input_text = body.body
 
     # Get the highlighted transcript
-    embedded_sentences = create_embedding(input_text)
+    _, embedded_sentences = create_embedding(input_text)
     best_sentence = get_best_sentence_index(embedded_sentences)
 
     return {"best_sentence_index": best_sentence}
