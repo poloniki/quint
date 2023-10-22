@@ -4,6 +4,7 @@ RUN apt-get update && apt-get install --no-install-recommends --no-install-sugge
 COPY requirements.txt /requirements.txt
 COPY setup.py setup.py
 RUN pip install --upgrade pip
+RUN pip install git+https://github.com/sanchit-gandhi/whisper-jax.git
 RUN apt-get install -y ffmpeg
 RUN pip install .
 RUN python -m spacy download en_core_web_lg
