@@ -7,8 +7,9 @@ jobs:
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    steps:
+    file: Dockerfile.jax
 
+    steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
