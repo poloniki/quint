@@ -3,6 +3,7 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 
+
 def clean(text: str) -> list:
     """
     Clean and pre-process a given text string by removing punctuation, lowercasing, tokenizing,
@@ -16,7 +17,7 @@ def clean(text: str) -> list:
     """
     # Remove Punctuation
     for punctuation in string.punctuation:
-        text = text.replace(punctuation, ' ')
+        text = text.replace(punctuation, " ")
     # Lower Case
     lowercased = text.lower()
     # Tokenize
@@ -24,7 +25,7 @@ def clean(text: str) -> list:
     # Remove numbers
     words_only = [word for word in tokenized if word.isalpha()]
     # Make stopword list
-    stop_words = set(stopwords.words('english'))
+    stop_words = set(stopwords.words("english"))
     # Remove Stop Words
     without_stopwords = [word for word in words_only if not word in stop_words]
     # Initiate Lemmatizer
@@ -32,8 +33,6 @@ def clean(text: str) -> list:
     # Lemmatize
     lemmatized = [lemma.lemmatize(word) for word in without_stopwords]
     return lemmatized
-
-
 
 
 def clean_text(sentences: list) -> list:
@@ -47,6 +46,6 @@ def clean_text(sentences: list) -> list:
     clean_sentences (list): List of cleaned and pre-processed text strings.
     """
     # Apply clean() function to each string in the list and join the resulting list of lemmatized words into a single string
-    clean_sentences = [' '.join(clean(each)) for each in sentences]
-    print('Sentences cleaned')
+    clean_sentences = [" ".join(clean(each)) for each in sentences]
+    print("Sentences cleaned")
     return clean_sentences

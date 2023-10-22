@@ -1,0 +1,22 @@
+# Byte-compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Distutils directories
+*.egg/
+build/
+dist/
+
+# Other common artifacts
+*.log
+*.swp
+*.bak
+*.tmp
+*.rpm
+*.deb
+
+# If using Git
+.git/
