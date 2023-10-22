@@ -1,15 +1,41 @@
-# Description
+# Quint
 
-Description: "Quintessentia" aims to make it easier for users to understand and navigate podcasts by providing summaries and timestamps. The project involves taking audio podcasts and converting them to text, then punctuating and chunking the text into meaningful parts. It also involves summarizing each part and timestamping it to allow users to easily navigate the podcast. The project creates a chart of the best topics in the podcast and provides a summary of the entire podcast.
+"Quint" is designed to enhance the podcast experience. It simplifies the process for users, making it easier for them to understand and navigate podcasts by providing concise summaries, highlights, and transcripts.
 
-# Main functionality of the API
+## 🚀 Main Functionality
 
-The upload function allows you to upload an audio file and get its transcript in text format. It takes an optional parameter file of type UploadFile which is a file that has been uploaded to the server.
+Below is a list of the core API endpoints offered by Quint:
 
-The function first gets the audio file name and checks if it already exists in the current directory. If it doesn't, the function saves the file locally and then calls the google_transcribe function to get the transcription of the audio file. It then calls the get_colored_transcript function to highlight certain parts of the transcript, such as names, products, companies, and dates. The function then saves the transcript locally and returns it to the user.
+### 🎥 YouTube Video Transcription
 
-If the audio file already exists in the current directory, the function reads the ready transcript from the local file and returns it to the user.
+Endpoint: /youtube_transcript?video_id=YOUR_YOUTUBE_VIDEO_ID
+Simply provide a YouTube video ID. Quint will fetch the video, extract its audio content, and return a transcription of the audio.
 
-The chunking_text function takes a block of text and splits it into reasonable chunks. It takes a parameter body of type Body, which is a dictionary containing the text to be chunked. The function first extracts the text from the input and then calls the create_embedding function to split the text into sentences and get their embeddings. It then calls the create_df function to create a dataframe with the sentences and the generated timestamps. Finally, it calls the get_middle_points function to get the points where the text should be split and then chunks the text accordingly. It returns the chunked text as a list of paragraphs.
+`GET /youtube_transcript?video_id=YOUR_YOUTUBE_VIDEO_ID`
 
-# Deploy T4
+### 🎙️ Transcription from Audio File
+
+** Endpoint: /file_transcript **
+Upload an audio file and instantly receive its transcription in text format.
+
+`POST /file_transcript`
+
+### 📜 Text Chunking
+
+** Endpoint: /chunk **
+Submit a lengthy text and get it divided into semantically meaningful chunks or paragraphs.
+
+`POST /chunk`
+
+### 🌟 Highlight the Best Sentences
+
+** Endpoint: /best_sentence **
+Submit a text and let Quint analyze it. The endpoint returns the index of the most descriptive sentence based on the embeddings.
+
+`POST /best_sentence`
+
+### 📖 License
+
+This project is licensed under the MIT License - see the LICENSE.md file for details.
+
+Feel free to adjust as necessary, and replace placeholders like the documentation link as appropriate.
