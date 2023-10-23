@@ -33,5 +33,3 @@ Submit a text and let Quint analyze it. The endpoint returns the index of the mo
 ### 📖 License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details.
-
-Feel free to adjust as necessary, and replace placeholders like the documentation link as appropriate.
