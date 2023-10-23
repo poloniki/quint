@@ -20,3 +20,4 @@ jobs:
         with:
           file: Dockerfile
           push: true
+          tags: poloniki/quint:latest
