@@ -9,6 +9,9 @@ clean:
 	@rm -fr build dist
 	@rm -fr quint-*.dist-info
 	@rm -fr quint.egg-info
+	@find . -name "__pycache__" -type d -exec rm -r {} +
+	@find . -name "*.pyc" -exec rm -f {} +
+
 
 run_api:
 	uvicorn quint.api.fast:app --port 8083 --reload
