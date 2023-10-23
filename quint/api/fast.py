@@ -7,9 +7,8 @@ from pydantic import BaseModel
 
 from quint.data.youtube import download_youtube_video
 from quint.preprocessing.audio import convert_mp4_to_flac
-from quint.transcribtion.transcription import transcribe_flac
 from quint.params import *
-from quint.transcribtion.transcriber import WhisperTranscriber
+from quint.transcribtion.transcriber import Transcriber
 from quint.chunking.generate import get_chunks
 from quint.highlighting.highlights import get_best_sentence_index
 from quint.tools.embedding import create_embedding
@@ -19,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 app = FastAPI()
 
 
-app.state.transcriber = WhisperTranscriber()
+app.state.transcriber = Transcriber()
 
 
 app.add_middleware(
@@ -82,10 +81,7 @@ def upload(file: UploadFile = File(...)):
     converted_flac_path = convert_mp4_to_flac(audio_file_name)
 
     # Get the transcription of the audio content
-    transcription_results = transcribe_flac(
-        transcriber=transcriber,
-        flac_path=converted_flac_path,
-    )
+    transcription_results = transcriber.transcribe(converted_flac_path)
 
     return {"transcript": transcription_results}
 
@@ -183,9 +179,6 @@ def youtube_transcript(video_id: str = "WdTeDXsOSj4"):
     converted_flac_path = convert_mp4_to_flac(audio_file_name)
 
     # Get the transcription of the audio content
-    transcription_results = transcribe_flac(
-        transcriber=transcriber,
-        flac_path=converted_flac_path,
-    )
+    transcription_results = transcriber.transcribe(converted_flac_path)
 
     return {"transcript": transcription_results}
