@@ -43,7 +43,7 @@ def root():
     Returns:
         dict: dictionary with welcome string as a value
     """
-    return {"greeting": "Welcome to Podcast Summarization API!"}
+    return {"greeting": "Welcome to the Quint API!"}
 
 
 @app.post("/file_transcript")
