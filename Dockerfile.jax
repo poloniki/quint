@@ -3,13 +3,14 @@ FROM ghcr.io/nvidia/jax:latest
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y curl
 COPY requirements.txt /requirements.txt
 COPY setup.py setup.py
+COPY quint /quint
 RUN pip install --upgrade pip
 RUN pip install git+https://github.com/sanchit-gandhi/whisper-jax.git
 RUN apt-get install -y ffmpeg
 RUN pip install .
 RUN python -m spacy download en_core_web_lg
-COPY quint /quint
-ENV GPU_TYPE=T40
-EXPOSE 80
 RUN pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-CMD ["gunicorn", "-b", "0.0.0.0:80", "quint.api.fast:app", "--workers", "1", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "240"]
+ENV GPU_TYPE=T40
+ENV ENV=JAX
+EXPOSE 80
+CMD ["gunicorn", "-b", "0.0.0.0:80", "quint.api.fast:app", "--workers", "1", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "320"]
