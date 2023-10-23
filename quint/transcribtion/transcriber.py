@@ -1,12 +1,23 @@
 import os
-import jax.numpy as jnp
-from jax.experimental.compilation_cache import compilation_cache as cc
 from pydub import AudioSegment
-from whisper_jax import FlaxWhisperPipline
 import logging
 
+if os.environ.get("ENV") == "JAX":
+    try:
+        from whisper_jax import FlaxWhisperPipline
+        from jax.experimental.compilation_cache import compilation_cache as cc
+        import jax.numpy as jnp
 
-class WhisperTranscriber:
+    except ImportError:
+        print("Jax library not installed!")
+else:
+    try:
+        import whisper
+    except ImportError:
+        print("Whisper library not installed!")
+
+
+class Transcriber:
     """
     A class to handle Whisper transcription tasks.
 
@@ -20,14 +31,18 @@ class WhisperTranscriber:
     """
 
     def __init__(self, cache_dir="./jax_cache"):
-        """Initialize the WhisperTranscriber class."""
-        self.GPU_TYPE = os.environ.get("GPU_TYPE", "UNKNOWN")
-        cc.initialize_cache(cache_dir)
-        self.pipeline = self.initialize_pipeline()
+        """Initialize the Transcriber class."""
+        if os.environ.get("ENV") == "JAX":
+            self.GPU_TYPE = os.environ.get("GPU_TYPE", "UNKNOWN")
+            cc.initialize_cache(cache_dir)
+            self.pipeline = self.initialize_pipeline()
 
-        # Precompilation using silence; just for warming up.
-        self._warmup()
-        logging.info("Succesfully initialized Whisper Jax Model")
+            # Precompilation using silence; just for warming up.
+            self._warmup()
+            logging.info("Succesfully initialized Whisper Jax model")
+        else:
+            self.model = whisper.load_model("large-v2")
+            logging.info("Succesfully initialized Whisper model")
 
     def initialize_pipeline(self):
         """
@@ -75,6 +90,11 @@ class WhisperTranscriber:
         - result: Transcription result.
         """
         try:
-            return self.pipeline(audio_path, task="transcribe", return_timestamps=True)
+            if os.environ.get("ENV") == "JAX":
+                return self.pipeline(
+                    audio_path, task="transcribe", return_timestamps=True
+                )
+            else:
+                return self.model.transcribe(audio_path, verbose=True)
         except Exception as e:
             raise RuntimeError(f"Error during transcription: {str(e)}")
