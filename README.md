@@ -84,7 +84,7 @@ Of course you are free to choose any cloud provider as Google/Azure/AWS. However
 
 ### Connect to DataCrunch client
 
-```
+```python
 import os
 from datacrunch import DataCrunchClient
 
