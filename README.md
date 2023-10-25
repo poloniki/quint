@@ -100,7 +100,7 @@ datacrunch = DataCrunchClient(CLIENT_ID, CLIENT_SECRET)
 
 ### Create an SSH key and save it in ~/.ssh folder
 
-```
+```python
 import os
 import subprocess
 import shutil
@@ -155,7 +155,7 @@ if len(ssh_keys) == 0:
 
 ### Select GPU (by default A6000, but you can change to any available on website)
 
-```
+```python
 #We select accessible GPU's that work really fast
 instance_type=''
 if datacrunch.instances.is_available(instance_type='1A6000.10V'):
@@ -168,7 +168,7 @@ elif datacrunch.instances.is_available(instance_type='1A6000ADA.10V'):
 
 Edit path to script according to enviroment you are in. Otherwise you can just run the notebook.
 
-```
+```python
 #Read the Bash script's contents
 with open('../scripts/clone_github_code.sh', 'r') as file:
     script_contents = file.read()
@@ -180,7 +180,7 @@ script_id = datacrunch.startup_scripts.get()[0].id
 
 ### Create the new Instance
 
-```
+```python
 #Create a new instance
 instance = datacrunch.instances.create(instance_type=instance_type,
                                       image='ubuntu-22.04-cuda-12.0-docker',
@@ -203,23 +203,28 @@ print('Instance is running, you can now connect to it.')
 
 ### Connect to instance via terminal
 
-```
+```python
 host = datacrunch.instances.get()[0].ip
 print(f'ssh root@{host} -i ~/.ssh/{key_filename}')
 Copy this command and run in terminal to connect to the instance.
+```
+
 #Connect to server via ssh and perform command "sudo reboot" to restart server for enabling Nvidia Drivers
+
+```shell
+sudo reboot
 ```
 
 Inside of instance terminal run this commands to copy latest version
 
-```
+```shell
 apt install gh
 git clone https://github.com/poloniki/quint.git
 ```
 
 Build and run docker
 
-```
+```shell
 docker build -t quint --file Dockerfile.jax .
 docker run --gpus all -p 80:80 quint
 ```
