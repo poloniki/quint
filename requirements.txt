@@ -31,3 +31,4 @@ gunicorn
 pytest
 mock
 pysbd
+openai
