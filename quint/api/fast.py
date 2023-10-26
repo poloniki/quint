@@ -9,6 +9,8 @@ from quint.data.youtube import download_youtube_video
 from quint.preprocessing.audio import convert_mp4_to_flac
 from quint.params import *
 from quint.transcribtion.transcriber import Transcriber
+from quint.summarizing.summarizer import TextSummarizer
+
 from quint.chunking.generate import get_chunks
 from quint.highlighting.highlights import get_best_sentence_index
 from quint.tools.embedding import create_embedding
@@ -19,6 +21,7 @@ app = FastAPI()
 
 
 app.state.transcriber = Transcriber()
+app.state.summarizer = TextSummarizer()
 
 
 app.add_middleware(
@@ -182,3 +185,23 @@ def youtube_transcript(video_id: str = "WdTeDXsOSj4"):
     transcription_results = transcriber.transcribe(converted_flac_path)
 
     return {"transcript": transcription_results}
+
+
+@app.get("/youtube_summarize")
+def youtube_transcript(video_id: str = "WdTeDXsOSj4"):
+    transcriber = app.state.transcriber
+
+    # Download audio from the provided YouTube video ID
+    audio_file_name = download_youtube_video(video_id=video_id)
+
+    # Convert the downloaded audio to FLAC format
+    converted_flac_path = convert_mp4_to_flac(audio_file_name)
+
+    # Get the transcription of the audio content
+    transcription_text = transcriber.transcribe(converted_flac_path)["text"]
+
+    chunks = get_chunks(transcription_text)
+    summarizer = app.state.summarizer()
+    summaries = list(map(summarizer.summarize, chunks))
+
+    return {"summary": summaries}
