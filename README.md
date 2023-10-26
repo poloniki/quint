@@ -1,4 +1,4 @@
-# Quint
+# Quint: transcribe | chunk | summarize
 
 <p align="center">
   <img src="frontend/logo.png" alt="Logo">
