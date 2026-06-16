@@ -1,1 +1,9 @@
-quintessentia
+# Lightweight deps for the demo only (gradio is provided by the Space SDK).
+# We intentionally do NOT install the full quintessentia package here: its
+# 2022-era spaCy pin needs Pydantic v1, which conflicts with Gradio's Pydantic v2.
+numpy
+scipy
+scikit-learn
+sentence-transformers
+pysbd
+openai>=1.0

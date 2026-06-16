@@ -1,20 +1,79 @@
 """Gradio demo of Quint's text pipeline, for Hugging Face Spaces.
 
-Splits a transcript into semantically coherent sections and (when an
-OPENAI_API_KEY Space secret is set) summarizes each one. Transcription (Whisper)
-needs a GPU, so this CPU-friendly demo focuses on the chunk + summarize stage —
-see https://github.com/poloniki/quint for the full self-hosted API.
+Splits a transcript into semantically coherent sections (the same algorithm as
+Quint's `get_chunks`) and, when an OPENAI_API_KEY Space secret is set, summarizes
+each one. It's self-contained — only the lightweight chunking/summarization deps,
+not the full package — so it builds on a free CPU Space. Transcription (Whisper)
+needs a GPU; see https://github.com/poloniki/quint for the full self-hosted API.
 """
 
 import os
 
 import gradio as gr
-
-from quint.chunking.generate import get_chunks
-from quint.summarizing.summarizer import TextSummarizer
+import numpy as np
+import pysbd
+from scipy.signal import argrelextrema
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 
 HAS_KEY = bool(os.environ.get("OPENAI_API_KEY"))
-summarizer = TextSummarizer()
+
+# Loaded once at startup (small, CPU-friendly).
+_model = SentenceTransformer("all-MiniLM-L6-v2")
+_seg = pysbd.Segmenter(language="en", clean=False)
+
+
+def _rev_sigmoid(x: float) -> float:
+    return 1 / (1 + np.exp(0.5 * x))
+
+
+def _activate_similarities(similarities: np.ndarray, p_size: int = 10) -> np.ndarray:
+    """Quint's activation: weight each sentence by its neighbours' similarity."""
+    p_size = min(p_size, similarities.shape[0])
+    x = np.linspace(-10, 10, p_size)
+    activation_weights = np.pad(
+        np.vectorize(_rev_sigmoid)(x), (0, similarities.shape[0] - p_size)
+    )
+    diagonals = [similarities.diagonal(each) for each in range(similarities.shape[0])]
+    diagonals = [
+        np.pad(each, (0, similarities.shape[0] - len(each))) for each in diagonals
+    ]
+    diagonals = np.stack(diagonals) * activation_weights.reshape(-1, 1)
+    return np.sum(diagonals, axis=0)
+
+
+def chunk_text(text: str) -> list[str]:
+    """Split text into semantic chunks at local minima of activated similarity."""
+    sentences = _seg.segment(text)
+    if len(sentences) < 3:
+        return [text.strip()]
+    embeddings = _model.encode(sentences)
+    activated = _activate_similarities(cosine_similarity(embeddings), p_size=10)
+    minima = set(argrelextrema(activated, np.less, order=2)[0].tolist())
+
+    chunks, current = [], ""
+    for idx, sentence in enumerate(sentences):
+        current += sentence
+        if idx in minima:
+            chunks.append(current.strip())
+            current = ""
+    if current.strip():
+        chunks.append(current.strip())
+    return chunks
+
+
+def summarize(text: str) -> str:
+    from openai import OpenAI
+
+    client = OpenAI()  # reads OPENAI_API_KEY from the environment
+    resp = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "user", "content": f"Summarize this in one sentence:\n\n{text}"}
+        ],
+    )
+    return resp.choices[0].message.content.strip()
+
 
 SAMPLE = (
     "Welcome back to the show. Today we're talking about how small habits compound "
@@ -42,8 +101,8 @@ def process(text: str) -> str:
     if not text:
         return "Please paste some text first."
     try:
-        chunks = get_chunks(text)
-    except Exception as exc:  # noqa: BLE001 - surface any pipeline error to the user
+        chunks = chunk_text(text)
+    except Exception as exc:
         return f"Chunking failed: {exc}"
 
     header = f"**{len(chunks)} section(s)**"
@@ -55,8 +114,8 @@ def process(text: str) -> str:
         parts.append(f"### Section {i}")
         if HAS_KEY:
             try:
-                parts.append(f"**Summary:** {summarizer.summarize(chunk)}")
-            except Exception as exc:  # noqa: BLE001
+                parts.append(f"**Summary:** {summarize(chunk)}")
+            except Exception as exc:
                 parts.append(f"_(summary unavailable: {exc})_")
         parts.append(f"> {chunk}")
         parts.append("")

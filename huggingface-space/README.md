@@ -42,5 +42,7 @@ setup:
 Create a Gradio Space at <https://huggingface.co/new-space> and upload `app.py`,
 `requirements.txt`, and this `README.md` to its root.
 
-The demo installs `quintessentia` from PyPI, so it always tracks the published
-package.
+The demo is self-contained: it mirrors Quint's chunking algorithm with only the
+lightweight deps it needs (sentence-transformers, pysbd, scipy, scikit-learn,
+openai), so it builds on a free CPU Space. See the full package at
+[`quintessentia`](https://pypi.org/project/quintessentia/).
