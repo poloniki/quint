@@ -5,54 +5,121 @@
 </p>
 
 <p align="center">
-  <a href="#">
+  <a href="https://github.com/poloniki/quint/actions/workflows/build.yml">
+    <img src="https://img.shields.io/github/actions/workflow/status/poloniki/quint/build.yml?branch=master&style=for-the-badge&logo=github&label=CI" alt="CI">
+  </a>
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT">
+  </a>
+  <a href="https://fastapi.tiangolo.com">
     <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI">
   </a>
-  <a href="#">
-    <img src="https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54" alt="Python">
+  <a href="https://www.python.org/downloads/release/python-3100/">
+    <img src="https://img.shields.io/badge/python-3.10-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54" alt="Python 3.10">
   </a>
-  <a href="#">
+  <a href="https://hub.docker.com/r/poloniki/quint">
     <img src="https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
   </a>
 </p>
 
 "Quint" is designed to enhance the podcast experience. It simplifies the process for users, making it easier for them to understand and navigate podcasts by providing concise summaries, highlights, and transcripts.
 
+## Table of Contents
+
+- [Main Functionality](#-main-functionality)
+- [Quickstart](#-quickstart)
+- [License](#-license)
+- [Deploy on a GPU cloud](#-how-to-deploy-this-api-on-cloud)
+
 ## 🚀 Main Functionality
 
 Below is a list of the core API endpoints offered by Quint:
 
+Once the API is running (see [Quickstart](#-quickstart)), interactive docs are available at `/docs`.
+
 ### 🎥 YouTube Video Transcription
 
-Simply provide a YouTube video ID. Quint will fetch the video, extract its audio content, and return a transcription of the audio.
+Provide a YouTube video ID. Quint fetches the video, extracts its audio, and returns a transcription.
 
-`GET /youtube_transcript?video_id=YOUR_YOUTUBE_VIDEO_ID`
+```http
+GET /youtube_transcript?video_id=YOUR_YOUTUBE_VIDEO_ID
+```
+
+```json
+{ "transcript": "The transcribed text of the video goes here..." }
+```
 
 ### 🎙️ Transcription from Audio File
 
-Upload an audio file and instantly receive its transcription in text format.
+Upload an audio file and receive its transcription in text format.
 
-`POST /file_transcript`
+```http
+POST /file_transcript
+```
+
+```json
+{ "transcript": "The transcribed text of the audio goes here..." }
+```
 
 ### 📜 Text Chunking
 
 Submit a lengthy text and get it divided into semantically meaningful chunks or paragraphs.
 
-`POST /chunk`
+```http
+POST /chunk
+{ "body": "Your lengthy continuous text here..." }
+```
 
-### 🌟 Highlight the Best Sentences
+```json
+{ "output": ["Chunk 1", "Chunk 2", "..."] }
+```
 
-Submit a text and let Quint analyze it. The endpoint returns the index of the most descriptive sentence based on the embeddings.
+### 🌟 Highlight the Best Sentence
 
-`POST /best_sentence`
+Submit a text and Quint returns the index of the most descriptive sentence based on the embeddings.
 
-### 📖 License
+```http
+POST /best_sentence
+{ "body": "Your raw text here..." }
+```
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE) file for details.
+```json
+{ "best_sentence_index": 5 }
+```
+
+### 📝 YouTube Summary
+
+Provide a YouTube video ID to get back a list of chunked summaries of the video.
+
+```http
+GET /youtube_summarize?video_id=YOUR_YOUTUBE_VIDEO_ID
+```
+
+```json
+{ "summary": ["Summary of part 1", "Summary of part 2", "..."] }
+```
+
+## 🧑‍💻 Quickstart
+
+Run the API locally — CPU is fine for chunking and summarization; transcription is far faster on a GPU (see [deploy](#-how-to-deploy-this-api-on-cloud)).
+
+```shell
+git clone https://github.com/poloniki/quint.git
+cd quint
+make install              # pip install -e .
+cp env.sample .env        # then set OPENAI_API_KEY
+make run_api              # serves on http://localhost:8083
+```
+
+Then open `http://localhost:8083/docs` for the interactive API docs.
+
+## 📖 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🛜 How to deploy this API on cloud
 
-Importand note: I highly reccomend using the JAX solution, as it is much faster than OpenAI proposed way. Please refer to this git [Whisper Jax](https://github.com/sanchit-gandhi/whisper-jax) for more details. I will attach one of the table from this git repo:
+Important note: I highly recommend using the JAX solution, as it is much faster than the OpenAI-proposed way. Please refer to this repo [Whisper JAX](https://github.com/sanchit-gandhi/whisper-jax) for more details. I will attach one of the tables from that repo:
 
 **Table 1:** Average inference time in seconds for audio files of increasing length. GPU device is a single A100 40GB GPU.
 TPU device is a single TPU v4-8.
