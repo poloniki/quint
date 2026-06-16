@@ -1,5 +1,4 @@
-FROM nvidia/cuda:12.2.2-devel-ubuntu22.04
-FROM python:3.10.6-buster
+FROM python:3.10-bookworm
 RUN apt-get update
 COPY requirements.txt /requirements.txt
 COPY setup.py setup.py

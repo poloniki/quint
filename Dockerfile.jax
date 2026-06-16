@@ -1,4 +1,3 @@
-FROM python:3.10.6-buster
 FROM ghcr.io/nvidia/jax:latest
 RUN apt-get update && apt-get install --no-install-recommends --no-install-suggests -y curl
 COPY requirements.txt /requirements.txt
