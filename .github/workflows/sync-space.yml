@@ -1,0 +1,50 @@
+name: Sync demo to Hugging Face Space
+
+# Auto-deploys the contents of huggingface-space/ to a Hugging Face Space on
+# every push to master (and on manual dispatch). Creates the Space if it does
+# not exist yet. Skips cleanly until you configure:
+#   - secret  HF_TOKEN     : a Hugging Face token with write access
+#   - variable HF_SPACE_ID : the target Space, e.g. "poloniki/quint-demo"
+# (Set the OPENAI_API_KEY summary secret on the Space itself, not here.)
+
+on:
+  push:
+    branches: [master]
+    paths: ["huggingface-space/**"]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    name: Sync to Space
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Upload to Hugging Face Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ vars.HF_SPACE_ID }}
+          GIT_SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$HF_TOKEN" ] || [ -z "$HF_SPACE_ID" ]; then
+            echo "HF_TOKEN secret and/or HF_SPACE_ID variable not set — skipping sync."
+            exit 0
+          fi
+          pip install --quiet "huggingface_hub>=0.25"
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          space = os.environ["HF_SPACE_ID"]
+          api.create_repo(repo_id=space, repo_type="space", space_sdk="gradio", exist_ok=True)
+          api.upload_folder(
+              folder_path="huggingface-space",
+              repo_id=space,
+              repo_type="space",
+              commit_message=f"Sync from {os.environ.get('GIT_SHA', '')[:7]}",
+          )
+          print(f"Synced huggingface-space/ -> https://huggingface.co/spaces/{space}")
+          PY
