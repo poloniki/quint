@@ -13,6 +13,9 @@ python-multipart
 # new
 pydub
 soundfile
+# Pinned for 2022-era ML-stack compat (protobuf>=3.21 breaks the legacy stack).
+# Dependabot CVE-2025-4565 / JSON-recursion are non-reachable here (quint never
+# parses untrusted protobuf); alerts dismissed. A real fix needs protobuf>=5.29.6.
 protobuf==3.20.2
 
 #Text process
