@@ -8,6 +8,9 @@
   <a href="https://pypi.org/project/quintessentia/">
     <img src="https://img.shields.io/pypi/v/quintessentia?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI">
   </a>
+  <a href="https://huggingface.co/spaces/poloniki/quint-demo">
+    <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Demo-Live-yellow?style=for-the-badge" alt="Live demo on Hugging Face Spaces">
+  </a>
   <a href="https://github.com/poloniki/quint/actions/workflows/build.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/poloniki/quint/build.yml?branch=master&style=for-the-badge&logo=github&label=CI" alt="CI">
   </a>
@@ -37,13 +40,9 @@
 
 ## 🎬 Demo
 
-A live, in-browser demo (chunk + summarize a transcript) deploys to a free
-[Hugging Face Space](huggingface-space/) — no GPU required. See
-[`huggingface-space/`](huggingface-space/) for one-click deploy instructions.
+▶️ **[Try Quint in your browser](https://huggingface.co/spaces/poloniki/quint-demo)** — paste a transcript and watch it get split into semantic sections and summarized. No install, no GPU.
 
-<!-- Once deployed, drop the live link here:
-▶️ **[Try Quint in your browser](https://huggingface.co/spaces/<your-username>/<space-name>)**
--->
+The demo runs on a free [Hugging Face Space](https://huggingface.co/spaces/poloniki/quint-demo); its source and auto-deploy setup live in [`huggingface-space/`](huggingface-space/).
 
 ## 🚀 Main Functionality
 
