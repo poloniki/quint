@@ -1,13 +1,13 @@
 import shutil
 import logging
 
-from fastapi import FastAPI, File, UploadFile, Request
+from fastapi import FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from quint.data.youtube import download_youtube_video
 from quint.preprocessing.audio import convert_mp4_to_flac
-from quint.params import *
+from quint.params import AUDIO_PATH
 from quint.transcribtion.transcriber import Transcriber
 from quint.summarizing.summarizer import TextSummarizer
 
@@ -188,7 +188,7 @@ def youtube_transcript(video_id: str = "WdTeDXsOSj4"):
 
 
 @app.get("/youtube_summarize")
-def youtube_transcript(video_id: str = "WdTeDXsOSj4"):
+def youtube_summarize(video_id: str = "WdTeDXsOSj4"):
     transcriber = app.state.transcriber
 
     # Download audio from the provided YouTube video ID
@@ -201,7 +201,7 @@ def youtube_transcript(video_id: str = "WdTeDXsOSj4"):
     transcription_text = transcriber.transcribe(converted_flac_path)["text"]
 
     chunks = get_chunks(transcription_text)
-    summarizer = app.state.summarizer()
+    summarizer = app.state.summarizer
     summaries = list(map(summarizer.summarize, chunks))
 
     return {"summary": summaries}

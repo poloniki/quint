@@ -8,8 +8,10 @@ def test_jax_device():
     # Check if there's any device
     assert devices, "No JAX devices available!"
 
-    # Check device type
+    # Check device type: this is a hardware/deploy check, so skip (rather than
+    # fail) when only a CPU is available, e.g. on a laptop or CI runner.
     device_types = {device.device_kind for device in devices}
-    assert (
-        "gpu" in device_types or "tpu" or "Metal" in device_types
-    ), f"Expected GPU or TPU, but got: {device_types}"
+    accelerators = {"gpu", "tpu", "Metal"}
+    if not (device_types & accelerators):
+        pytest.skip(f"No GPU/TPU/Metal accelerator available (got {device_types})")
+    assert device_types & accelerators, f"Expected GPU/TPU/Metal, but got: {device_types}"
