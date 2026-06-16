@@ -35,11 +35,29 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+  # Only build/push the image when Docker Hub credentials are configured, so the
+  # pipeline stays green on clones/forks (and before secrets are set).
+  check-secrets:
+    name: Check Docker credentials
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        env:
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [lint, test]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [lint, test, check-secrets]
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && needs.check-secrets.outputs.configured == 'true' }}
     steps:
       - uses: actions/checkout@v4
 
