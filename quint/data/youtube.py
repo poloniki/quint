@@ -1,5 +1,5 @@
 from pytube import YouTube
-from quint.params import *
+from quint.params import AUDIO_PATH
 
 
 def download_youtube_video(video_id: str) -> str:

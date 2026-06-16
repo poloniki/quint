@@ -9,12 +9,12 @@ if os.environ.get("ENV") == "JAX":
         import jax.numpy as jnp
 
     except ImportError:
-        print("Jax library not installed!")
+        logging.warning("Jax library not installed!")
 else:
     try:
         import whisper
     except ImportError:
-        print("Whisper library not installed!")
+        logging.warning("Whisper library not installed!")
 
 
 class Transcriber:
@@ -39,10 +39,10 @@ class Transcriber:
 
             # Precompilation using silence; just for warming up.
             self._warmup()
-            logging.info("Succesfully initialized Whisper Jax model")
+            logging.info("Successfully initialized Whisper Jax model")
         else:
             self.model = whisper.load_model("large-v2")
-            logging.info("Succesfully initialized Whisper model")
+            logging.info("Successfully initialized Whisper model")
 
     def initialize_pipeline(self):
         """

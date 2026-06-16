@@ -21,7 +21,7 @@ def activate_similarities(similarities: np.array, p_size=10) -> np.array:
     x = np.linspace(-10, 10, p_size)
     # Then we need to apply activation function to the created space
     y = np.vectorize(rev_sigmoid)
-    # Because we only apply activation to p_size number of sentences we have to add zeros to neglect the effect of every additional sentence and to match the length ofvector we will multiply
+    # Because we only apply activation to p_size number of sentences we have to add zeros to neglect the effect of every additional sentence and to match the length of vector we will multiply
     activation_weights = np.pad(y(x), (0, similarities.shape[0] - p_size))
     ### 1. Take each diagonal to the right of the main diagonal
     diagonals = [
@@ -44,11 +44,11 @@ def get_middle_points(embeddings: np.array) -> list:
     # Create similarities matrix
     similarities = cosine_similarity(embeddings)
 
-    # Let's apply our function. For long sentences i reccomend to use 10 or more sentences
+    # Let's apply our function. For long sentences i recommend to use 10 or more sentences
     activated_similarities = activate_similarities(similarities, p_size=10)
 
     ### 6. Find relative minima of our vector. For all local minimas and save them to variable with argrelextrema function
-    minmimas = argrelextrema(
+    minimas = argrelextrema(
         activated_similarities, np.less, order=2
-    )  # order parameter controls how frequent should be splits. I would not reccomend changing this parameter.
-    return minmimas
+    )  # order parameter controls how frequent should be splits. I would not recommend changing this parameter.
+    return minimas

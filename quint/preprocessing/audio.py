@@ -2,7 +2,7 @@ from pydub import AudioSegment
 from pydub.utils import which
 import os
 from quint.tools.time import timed
-from quint.params import *
+from quint.params import AUDIO_PATH
 
 # Setting up the converter for pydub
 AudioSegment.converter = which("ffmpeg")
