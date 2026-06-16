@@ -194,6 +194,8 @@ Set the following in `.env`:
 | --- | --- | --- |
 | `OPENAI_API_KEY` | API (summarization) | Key for the summarization step |
 | `GPU_TYPE` | API (optional) | Set to `A100` to enable bfloat16 on the JAX backend; any other value (or unset) uses float16 |
+| `EMBEDDING_MODEL` | API (optional) | sentence-transformer used for chunking; default `all-MiniLM-L6-v2`. Use a multilingual model (e.g. `paraphrase-multilingual-MiniLM-L12-v2`) for non-English text |
+| `SEGMENT_LANGUAGE` | API (optional) | pysbd sentence-split language; default `en` (e.g. `ja` for Japanese) |
 | `EMAIL` | deploy helper | Labels / generates your SSH key |
 | `HOST` | deploy helper | Public IP or hostname of your GPU instance |
 | `SSH_USER` | deploy helper | SSH login user for your image (often `root`, but `ubuntu` on AWS, your username on GCP, `azureuser` on Azure) |

@@ -26,7 +26,9 @@ def activate_similarities(similarities: np.array, p_size=10) -> np.array:
     y = np.vectorize(rev_sigmoid)
     # Because we only apply activation to p_size number of sentences we have to add zeros to neglect the effect of every additional sentence and to match the length of vector we will multiply
     activation_weights = np.pad(y(x), (0, similarities.shape[0] - p_size))
-    ### 1. Take each diagonal to the right of the main diagonal
+    ### 1. Take each diagonal at and to the right of the main diagonal. The
+    ### similarity matrix is symmetric, so diagonal k holds each sentence's
+    ### similarity to the sentence k positions *after* it (issue #4).
     diagonals = [
         similarities.diagonal(each) for each in range(0, similarities.shape[0])
     ]
