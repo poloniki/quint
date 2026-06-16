@@ -17,6 +17,9 @@ def activate_similarities(similarities: np.array, p_size=10) -> np.array:
     Returns:
         list: list of weighted sums
     """
+    # p_size can't exceed the number of sentences, otherwise the padding below
+    # gets a negative width and crashes on short inputs (fewer than p_size sentences).
+    p_size = min(p_size, similarities.shape[0])
     # To create weights for sigmoid function we first have to create space. P_size will determine number of sentences used and the size of weights vector.
     x = np.linspace(-10, 10, p_size)
     # Then we need to apply activation function to the created space
@@ -37,6 +40,20 @@ def activate_similarities(similarities: np.array, p_size=10) -> np.array:
     diagonals = diagonals * activation_weights.reshape(-1, 1)
     ### 5. Calculate the weighted sum of activated similarities
     activated_similarities = np.sum(diagonals, axis=0)
+    ### 5b. Normalize by the activation-weight mass actually applied at each
+    ### position. Diagonals to the right are shorter and get zero-padded at the
+    ### tail, so without this the last p_size-1 sentences get artificially low
+    ### sums and spuriously look like chunk boundaries (issue #12).
+    contribution_mask = np.stack(
+        [
+            np.pad(np.ones(similarities.shape[0] - each), (0, each))
+            for each in range(similarities.shape[0])
+        ]
+    )
+    weight_mass = np.sum(contribution_mask * activation_weights.reshape(-1, 1), axis=0)
+    activated_similarities = activated_similarities * (
+        activation_weights.sum() / weight_mass
+    )
     return activated_similarities
 
 
