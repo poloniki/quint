@@ -12,6 +12,8 @@ raw_data/
 build/
 dist/
 .coverage
+.pytest_cache/
+.hypothesis/
 *.iml
 *.egg-info
 .vscode/
