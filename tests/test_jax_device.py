@@ -1,5 +1,8 @@
 import pytest
-import jax
+
+# jax is an optional, deploy-time dependency (installed via Dockerfile.jax, not
+# requirements.txt), so skip this hardware check anywhere it isn't installed.
+jax = pytest.importorskip("jax")
 
 
 def test_jax_device():
