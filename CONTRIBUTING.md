@@ -42,3 +42,24 @@ pre-commit install
 
 By contributing you agree that your contributions are licensed under the
 project's [MIT License](LICENSE).
+
+## Releasing to PyPI
+
+The package is published to PyPI as [`quintessentia`](https://pypi.org/project/quintessentia/)
+(the import name stays `quint`). Releases use **Trusted Publishing** (OIDC) — no
+API tokens are stored. `.github/workflows/publish.yml` builds and uploads the
+distribution whenever a GitHub Release is published.
+
+**One-time setup** (maintainers only):
+
+1. On PyPI → [Publishing](https://pypi.org/manage/account/publishing/), add a
+   *pending publisher* with: project `quintessentia`, owner `poloniki`,
+   repository `quint`, workflow `publish.yml`, environment `pypi`.
+2. On GitHub → Settings → Environments, create an environment named `pypi`.
+
+**Cutting a release:**
+
+1. Bump `version=` in `setup.py`.
+2. Optionally check the build locally: `pip install build twine && python -m build && twine check dist/*`.
+3. Create a GitHub Release with a tag (e.g. `v1.2`). The publish workflow runs
+   automatically and uploads to PyPI.
