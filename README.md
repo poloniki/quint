@@ -1,7 +1,7 @@
 # Quint: transcribe | chunk | summarize
 
 <p align="center">
-  <img src="frontend/logo.png" alt="Logo">
+  <img src="https://raw.githubusercontent.com/poloniki/quint/master/frontend/logo.png" alt="Quint logo">
 </p>
 
 <p align="center">
