@@ -1,7 +1,6 @@
 numpy
 pandas
 scikit-learn
-seaborn
 # tests/linter
 pytest
 # API
@@ -28,7 +27,6 @@ ml-dtypes==0.2.0
 pytube
 cached_property
 gunicorn
-pytest
 mock
 pysbd
-openai
+openai~=0.28.1
