@@ -237,8 +237,15 @@ print(f"At n={n0}: {tb:.3f}s  ->  {tn:.4f}s  =  {tb/tn:.0f}x faster (and the new
 base_chunks = get_chunks(base_text)
 new_chunks  = new_pipeline(base_text)
 print(f"baseline made {len(base_chunks)} chunks, streaming made {len(new_chunks)}")
-# boundary agreement: fraction of streaming boundaries within +/-1 sentence of a baseline boundary
-# (compute sentence-index boundaries for each, compare) -- implement inline, print an agreement %
+
+def cut_indices(chunks):                       # sentence index of each chunk boundary
+    cuts, acc = set(), 0
+    for c in chunks[:-1]:
+        acc += len(seg.segment(c)); cuts.add(acc)
+    return cuts
+bA, nA = cut_indices(base_chunks), cut_indices(new_chunks)
+agree = sum(any(abs(b - x) <= 1 for x in bA) for b in nA) / max(len(nA), 1)
+print(f"{agree:.0%} of streaming cuts land within ±1 sentence of a Part-1 cut")
 print("first streaming chunk:\n", new_chunks[0][:300])
 ```
 
