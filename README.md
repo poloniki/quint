@@ -72,161 +72,74 @@ TPU device is a single TPU v4-8.
 
 </div>
 
-### Choosing a cloud provider
+### Choosing a GPU cloud provider
 
-Of course you are free to choose any cloud provider as Google/Azure/AWS. However, one of the issues for me is that thoose providers do not have ADA6000 GPU's which are cheaper then A100 and likes and provide the same [compute capability](https://developer.nvidia.com/cuda-gpus). For that reason I propose - [Datacrunch](https://datacrunch.io/). This is not an advertisement, I'm in no way affiliated to them, but I found their service as best for cost/price for transcribtion.
+Quint runs on any machine with an NVIDIA GPU, so you are free to use whichever cloud provider (AWS, GCP, Azure, Lambda, Paperspace, RunPod, …) or on-prem hardware you prefer. For the best price/performance on transcription, look for an **Ada-generation card** such as the RTX 6000 Ada or A6000 — these are typically far cheaper than A100-class GPUs while offering comparable [CUDA compute capability](https://developer.nvidia.com/cuda-gpus).
 
-1. We need to create an account via Sign-Up
-2. Add card and top-up minumum ammount (20USD currently)
-3. In the account settings Generate credentials and fill in .env.sample with Id and Secret
-4. Rename .env.sample to .env
-5. Run direnv reload in terminal
+Whatever you pick, you only need an instance that provides:
 
-### Connect to DataCrunch client
+- An **NVIDIA GPU** (Ampere/Ada or newer recommended)
+- **Ubuntu 22.04** (or similar) with **CUDA 12** and **Docker**
+- **SSH access** (root or sudo)
 
-```python
-import os
-from datacrunch import DataCrunchClient
+The steps below are provider-neutral: provision the instance however your provider requires, then follow along.
 
-# Get client secret from environment variable
-
-CLIENT_SECRET = os.environ['DATACRUNCH_CLIENT_SECRET']
-CLIENT_ID = os.environ['DATACRUNCH_CLIENT_ID']
-
-# Create datcrunch client
-
-datacrunch = DataCrunchClient(CLIENT_ID, CLIENT_SECRET)
-```
-
-### Create an SSH key and save it in ~/.ssh folder
-
-```python
-import os
-import subprocess
-import shutil
-email = os.environ['EMAIL']
-key_filename = email.replace("@", "_").replace(".", "_")
-def generate_ssh_key(email: str) -> str:
-    try:
-        # Create a filename based on the email
-
-
-        # Define the command and its arguments as a list
-        cmd = [
-            "ssh-keygen",
-            "-t", "ed25519",
-            "-C", email,
-            "-f", key_filename,  # Using the modified filename
-            "-N", ""  # Empty passphrase
-        ]
-
-        # Run the command
-        process = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        # Send an empty passphrase (newline) twice: once for the passphrase itself and once to confirm it
-        process.communicate(input=b'\n\n')
-        if process.returncode != 0:
-            raise Exception("Error generating the key.")
-
-        # Read the public key
-        with open(f"{key_filename}.pub", "r") as f:
-            pubkey = f.read()
-
-        # Move generated keys to the ~/.ssh folder
-        shutil.move(key_filename, os.path.expanduser(f"~/.ssh/{key_filename}"))
-        shutil.move(f"{key_filename}.pub", os.path.expanduser(f"~/.ssh/{key_filename}.pub"))
-
-        print(f"SSH key for {email} generated successfully!")
-        return pubkey
-
-    except Exception as e:
-        print(f"Failed to generate SSH key for {email}. Reason: {e}")
-        return None
-
-# Get all SSH keys
-ssh_keys = datacrunch.ssh_keys.get()
-ssh_keys = list(map(lambda key: key.id, ssh_keys))
-if len(ssh_keys) == 0:
-    public_key = generate_ssh_key(email)
-    datacrunch.ssh_keys.create(email,public_key)
-    ssh_keys = datacrunch.ssh_keys.get()
-    ssh_keys = list(map(lambda key: key.id, ssh_keys))
-
-```
-
-### Select GPU (by default A6000, but you can change to any available on website)
-
-```python
-#We select accessible GPU's that work really fast
-instance_type=''
-if datacrunch.instances.is_available(instance_type='1A6000.10V'):
-    instance_type='1A6000.10V'
-elif datacrunch.instances.is_available(instance_type='1A6000ADA.10V'):
-    instance_type='1A6000ADA.10V'
-```
-
-### Create script for installing neccesary NVIDIA drivers
-
-Edit path to script according to enviroment you are in. Otherwise you can just run the notebook.
-
-```python
-#Read the Bash script's contents
-with open('../scripts/clone_github_code.sh', 'r') as file:
-    script_contents = file.read()
-
-#Use the script_contents in the datacrunch function
-datacrunch.startup_scripts.create('cuda_drivers', script_contents)
-script_id = datacrunch.startup_scripts.get()[0].id
-```
-
-### Create the new Instance
-
-```python
-#Create a new instance
-instance = datacrunch.instances.create(instance_type=instance_type,
-                                      image='ubuntu-22.04-cuda-12.0-docker',
-                                      ssh_key_ids=ssh_keys,
-                                      hostname='quint',
-                                      description='Transcription and summarization API',
-                                      startup_script_id=script_id,
-                                      os_volume={
-                                        "name": "OS volume",
-                                        "size": 100
-                                        }
-                                      )
-
-import time
-while datacrunch.instances.get()[0].status=='provisioning':
-    time.sleep(5)
-print('Instance is running, you can now connect to it.')
-
-```
-
-### Connect to instance via terminal
-
-```python
-host = datacrunch.instances.get()[0].ip
-print(f'ssh root@{host} -i ~/.ssh/{key_filename}')
-Copy this command and run in terminal to connect to the instance.
-```
-
-#Connect to server via ssh and perform command "sudo reboot" to restart server for enabling Nvidia Drivers
+### 1. Configure your environment
 
 ```shell
+cp env.sample .env        # then edit .env
+direnv reload             # or: source .env
+```
+
+Set the following in `.env`:
+
+| Variable | Used by | Purpose |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | API (summarization) | Key for the summarization step |
+| `GPU_TYPE` | API (optional) | Set to `A100` to enable bfloat16 on the JAX backend; any other value (or unset) uses float16 |
+| `EMAIL` | deploy helper | Labels / generates your SSH key |
+| `HOST` | deploy helper | Public IP or hostname of your GPU instance |
+| `SSH_USER` | deploy helper | SSH login user for your image (often `root`, but `ubuntu` on AWS, your username on GCP, `azureuser` on Azure) |
+
+### 2. Provision and connect to the instance
+
+Create a GPU instance with your provider using an **Ubuntu 22.04 + CUDA 12 + Docker** image and your SSH public key. Once it is running, note its public IP (set it as `HOST` in `.env`) and connect:
+
+```shell
+ssh $SSH_USER@$HOST -i ~/.ssh/<your_key>
+```
+
+> Use the login user your provider specifies for the image. `root` works on many bare-VM providers, but AWS Ubuntu AMIs use `ubuntu`, GCP uses your username, Azure uses `azureuser`, etc. Set it as `SSH_USER` in `.env`.
+
+The notebook [`notebooks/Deploy_gpu_instance.ipynb`](notebooks/Deploy_gpu_instance.ipynb) automates the provider-neutral parts: generating an SSH key, copying the code to the host, and building/running the container.
+
+### 3. Install NVIDIA drivers (if your image doesn't include them)
+
+If the instance image already ships with working drivers, skip this. Otherwise run the bundled script on the instance and reboot to load them:
+
+```shell
+bash scripts/install_nvidia_driver.sh
 sudo reboot
 ```
 
-Inside of instance terminal run this commands to copy latest version
+### 4. Get the code onto the instance
+
+Clone it directly:
 
 ```shell
-apt install gh
 git clone https://github.com/poloniki/quint.git
+cd quint
 ```
 
-Build and run docker
+…or copy your local checkout up with `scp` (the deploy notebook does this for you).
+
+### 5. Build and run
 
 ```shell
 docker build -t quint --file Dockerfile.jax .
-docker run --gpus all -p 80:80 quint
+docker run --gpus all -p 80:80 --shm-size=1g --env-file .env quint
 ```
 
-Your API endpoint would be avialable on the instance Ip-adress.
+> The `--env-file .env` flag passes `OPENAI_API_KEY` (and optional `GPU_TYPE`) into the container, so make sure `.env` is present on the instance. Also ensure your provider's firewall / security group allows inbound TCP on port **80** — most clouds only open SSH (port 22) by default.
+
+Your API is now available on the instance's public IP (port 80).
