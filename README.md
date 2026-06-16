@@ -113,6 +113,17 @@ make run_api              # serves on http://localhost:8083
 
 Then open `http://localhost:8083/docs` for the interactive API docs.
 
+### Web UI (optional)
+
+A small [Streamlit](https://streamlit.io) frontend lives in [`frontend/`](frontend/app.py). With the API running:
+
+```shell
+pip install -r frontend/requirements.txt
+streamlit run frontend/app.py
+```
+
+Set `QUINT_API_URL` if the API isn't on `http://localhost:8083`.
+
 ## 📖 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

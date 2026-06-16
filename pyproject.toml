@@ -3,9 +3,8 @@
 [tool.ruff]
 target-version = "py310"
 line-length = 88
-# frontend/ is a legacy Streamlit prototype that targets an older architecture
-# and no longer imports cleanly; notebooks are exploratory. Exclude both.
-extend-exclude = ["frontend", "notebooks"]
+# Notebooks are exploratory; skip them.
+extend-exclude = ["notebooks"]
 
 [tool.ruff.lint]
 # Mirror ruff's default rule set explicitly so CI is deterministic across versions.

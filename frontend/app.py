@@ -1,280 +1,149 @@
-from distutils import text_file
-import streamlit as st
-import base64
+"""Streamlit web UI for the Quint API.
 
-from IPython.display import YouTubeVideo
+Run it from the repo root with the API already serving:
+
+    pip install -r frontend/requirements.txt
+    streamlit run frontend/app.py
+
+Point it at a different backend with the QUINT_API_URL environment variable
+(defaults to http://localhost:8083).
+"""
+
 import os
+import re
 
-# Importing from our own repository
-from processing import concatenate_lines
-from punctuation_api import punctuate
-from chunk_api import chunk
-from summary_api import summarize
-from quint.data.youtube import video_name
-from getting_best_api import get_best
-from bert import get_bert, color_df
-import pandas as pd
-import random
+import requests
+import streamlit as st
 
+API_URL = os.environ.get("QUINT_API_URL", "http://localhost:8083")
+LOGO = os.path.join(os.path.dirname(__file__), "logo.png")
 
-def get_sec(time_str):
-    """Get seconds from time."""
-    h, m, s = time_str.split(":")
-    return int(h) * 3600 + int(m) * 60 + int(s)
+# Transcription downloads + runs Whisper, so give those calls a generous timeout.
+TRANSCRIBE_TIMEOUT = 600
+QUICK_TIMEOUT = 60
+
+st.set_page_config(page_title="Quint", page_icon="🎙️", layout="centered")
 
 
-layout = "wide"
-st.set_page_config(page_title="Quint")
-st.set_option("deprecation.showPyplotGlobalUse", False)
-
-st.session_state["flag"] = False
-
-
-# component= "<h1 style= 'color: red' > Inject Header HTML  </h1>"
-# st.markdown(component, unsafe_allow_html=True)
-
-col1, col2, col3 = st.columns([0.15, 0.65, 0.1])
-
-with col1:
-    st.write(" ")
-
-with col2:
-    st.image("logo.png")
-
-with col3:
-    st.write(" ")
+def extract_video_id(value: str) -> str | None:
+    """Pull an 11-character YouTube video ID out of a URL or a raw ID."""
+    value = value.strip()
+    if not value:
+        return None
+    if re.fullmatch(r"[A-Za-z0-9_-]{11}", value):
+        return value
+    match = re.search(r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})", value)
+    return match.group(1) if match else None
 
 
-@st.cache(allow_output_mutation=True)
-def get_base64_of_bin_file(bin_file):
-    with open(bin_file, "rb") as f:
-        data = f.read()
-    return base64.b64encode(data).decode()
-
-    # background-color: green;
-    # background-image: linear-gradient(to right, #99ff99, #99ff99);
-
-
-main_html = """
-    <style>
-    thead tr th:first-child {display:none}
-    tbody th {display:none}
-    .css-a51556 {
-        border-bottom: 1px solid rgba(49, 51, 63, 0.1);
-        border-right: 1px solid rgba(49, 51, 63, 0.1);
-        vertical-align: middle;
-        padding: 0.25rem 0.375rem;
-        font-weight: 600;
-        color: rgb(12 12 12 / 80%);
-        background-color: rgb(12 12 12 / 4%);
-    }
-    .css-1n76uvr {
-        width: 900px;
-        position: relative;
-        display: flex;
-        flex: 1 1 0%;
-        flex-direction: column;
-        gap: 1rem;
-    }
-    .stApp {
-    background-image: url("data:image/jpg;base64,%s");
-    background-size: cover;
-    }
-    .st-cs {
-        background-color: green;
-        background-image: linear-gradient(to right, #dd3764, #99ff99);
-    }
-    .TimeStamp {
-        background: rgb(200 230 254 / 80%);
-        padding: 0.12em 0.3em;
-        margin: 0 0.0000001em;
-        line-height: 1;
-        border-radius: 0.15em;
-        text-decoration: underline;
-    }
-    .BestWords {
-        background: #feca74;
-        padding: 0.12em 0.3em;
-        margin: 0 0.0000001em;
-        line-height: 1;
-        border-radius: 0.15em"
-    }
-    .css-1cpxqw2 {
-        color:green;
-        width:8em;
-        height:2.5em;
-        padding-bottom: 0 rem;
-        padding-top: 100 rem;
-        align: buttom;
-    .ccss-ocqkz7 e1tzin5v4 {
-        padding-bottom: 0 rem;
-        padding-top: 0 rem;
-        align: buttom;
-    </style>
-    """
-st.markdown(main_html, unsafe_allow_html=True)
+def api_request(method: str, path: str, base_url: str, *, timeout: int, **kwargs):
+    """Call the API and return (ok, payload_or_error_message)."""
+    url = f"{base_url.rstrip('/')}{path}"
+    try:
+        resp = requests.request(method, url, timeout=timeout, **kwargs)
+        resp.raise_for_status()
+        return True, resp.json()
+    except requests.exceptions.ConnectionError:
+        return False, f"Could not reach the API at {base_url}. Is it running?"
+    except requests.exceptions.Timeout:
+        return False, "The request timed out — transcription can take a few minutes."
+    except requests.exceptions.HTTPError as exc:
+        return False, f"API error: {exc.response.status_code} {exc.response.reason}"
+    except ValueError:
+        return False, "The API returned a non-JSON response."
 
 
-def main_page():
-    st.markdown(
-        """
-<style>
-.sidebar .sidebar-content {
-    background-image: linear-gradient(#2e7bcf,#2e7bcf);
-    color: white;
-}
-</style>
-""",
-        unsafe_allow_html=True,
+with st.sidebar:
+    st.header("Settings")
+    base_url = st.text_input("API URL", value=API_URL)
+    if st.button("Check connection"):
+        ok, payload = api_request("GET", "/", base_url, timeout=QUICK_TIMEOUT)
+        st.success("Connected ✅") if ok else st.error(payload)
+
+if os.path.exists(LOGO):
+    st.image(LOGO, use_container_width=True)
+st.markdown(
+    "<p style='text-align:center'>Transcribe · chunk · summarize podcasts</p>",
+    unsafe_allow_html=True,
+)
+
+tab_summary, tab_transcript, tab_chunk = st.tabs(
+    ["📝 Summarize", "🎥 Transcript", "📜 Chunk text"]
+)
+
+with tab_summary:
+    st.subheader("Summarize a YouTube video")
+    url = st.text_input(
+        "YouTube URL or video ID",
+        value="https://www.youtube.com/watch?v=WdTeDXsOSj4",
+        key="summary_url",
     )
+    if st.button("Summarize", type="primary"):
+        video_id = extract_video_id(url)
+        if not video_id:
+            st.warning("Please enter a valid YouTube URL or 11-character video ID.")
+        else:
+            with st.spinner("Downloading, transcribing and summarizing…"):
+                ok, payload = api_request(
+                    "GET",
+                    "/youtube_summarize",
+                    base_url,
+                    params={"video_id": video_id},
+                    timeout=TRANSCRIBE_TIMEOUT,
+                )
+            if ok:
+                summaries = payload.get("summary", [])
+                st.success(f"{len(summaries)} summary chunk(s)")
+                for i, chunk in enumerate(summaries, start=1):
+                    st.markdown(f"**Part {i}**")
+                    st.write(chunk)
+            else:
+                st.error(payload)
 
-    st.markdown("# Quintessentia 🎈")
-
-
-if "status" not in st.session_state:
-    st.session_state["status"] = "submitted"
-
-
-def refresh_state():
-    st.session_state["status"] = "submitted"
-
-
-col1, col2 = st.columns([0.8, 0.2])
-
-
-with col1:
-    link = st.text_input(
-        "", "https://www.youtube.com/watch?v=RcYjXbSJBN8", on_change=refresh_state
+with tab_transcript:
+    st.subheader("Transcribe a YouTube video")
+    url = st.text_input(
+        "YouTube URL or video ID",
+        value="https://www.youtube.com/watch?v=WdTeDXsOSj4",
+        key="transcript_url",
     )
+    if st.button("Transcribe"):
+        video_id = extract_video_id(url)
+        if not video_id:
+            st.warning("Please enter a valid YouTube URL or 11-character video ID.")
+        else:
+            with st.spinner("Downloading and transcribing…"):
+                ok, payload = api_request(
+                    "GET",
+                    "/youtube_transcript",
+                    base_url,
+                    params={"video_id": video_id},
+                    timeout=TRANSCRIBE_TIMEOUT,
+                )
+            if ok:
+                transcript = payload.get("transcript")
+                if isinstance(transcript, dict):
+                    transcript = transcript.get("text", transcript)
+                st.text_area("Transcript", value=str(transcript), height=400)
+            else:
+                st.error(payload)
 
-
-with col2:
-    st.text("")
-    st.text("")
-    summary = st.button("QUINT")
-
-
-if "seconds" not in st.session_state:
-    st.session_state.seconds = 0
-
-# https://www.youtube.com/watch?v=6T7pUEZfgdI&t=6586s
-# button = """<a href="https://www.youtube.com/watch?v=6T7pUEZfgdI&t=6586s" class="button">Go to Google</a>"""
-# st.markdown(button, unsafe_allow_html=True)
-
-
-video_id = link.split("=")[1]
-YouTubeVideo(video_id)
-
-text_file = f"{video_id}.txt"
-
-_col1, _col2 = st.columns([0.7, 0.3])
-
-# First we check if we already have summary for some specifict podcast
-if (summary) & (text_file not in os.listdir("results/")):
-    # VISUAL ELEMENT - starting
-    progress = 0
-    my_bar = st.progress(progress)
-
-    ### GETTING TRANSCRIPT ####
-    # Get the transcipt: list of dictionaries
-    YouTubeTranscriptApi.get_transcript(video_id)
-    transcript = YouTubeTranscriptApi.get_transcript(video_id)
-    my_bar.progress(progress + 1)
-
-    # Now we need to get the text out and punctuate it
-    concatenated_text = concatenate_lines(
-        transcript
-    )  ## Function that creates txt file from list of texts
-    my_bar.progress(progress + 4)
-    print("Starting punctuating")
-    punctuated_text = punctuate(concatenated_text)  ## Punctuate concatenated text
-    my_bar.progress(progress + 30)
-    with open(f"transcripts/{video_id}_transcript.txt", "w") as f:
-        f.write(punctuated_text)
-        f.close()
-    # Now we need to chunk text into main parts
-    chunked_text = chunk(punctuated_text)  ## Returns list of chunks
-    print(f"Chunked into {len(chunked_text)} chunks.")
-    my_bar.progress(progress + 15)
-
-    # Get the timestamp of each chunk
-    timestamps = timestamping(chunked_text, transcript)
-    my_bar.progress(progress + 5)
-    ###### SUMMARIZATION PART #########
-    # Create a list of ready summaries
-    summary_list = [summarize(each) for each in chunked_text]
-    # Take out escape characters and punct which messes with API
-    summary_list = list(
-        map(lambda chunk: chunk.replace("\\", "").replace('"', ""), summary_list)
-    )
-    my_bar.progress(progress + 30)
-
-    # Create headlines from the summaries
-    headlines = [summarize(each, length=50) for each in summary_list]
-    headlines = list(
-        map(lambda chunk: chunk.replace("\\", "").replace('"', ""), headlines)
-    )
-    my_bar.progress(progress + 10)
-
-    # Add headlines to the summaries + get best with higlights
-    summary_list = [
-        f"<b>{headlines[i]}</b>" + "\n\n" + get_best(each)
-        for i, each in enumerate(summary_list)
-    ]
-    my_bar.progress(progress + 5)
-
-    # # Create Html tags for best words and sents
-    # summary_list = [ for each in summary_list]
-    # Add timestamps to summaries
-    summary_list = [
-        f"<span class='TimeStamp'><a href='https://www.youtube.com/watch?v={video_id}&t={get_sec(timestamps[i])}'>{timestamps[i]}</a></span>"
-        + " "
-        + each
-        for i, each in enumerate(summary_list)
-    ]
-
-    # Create an concatenated summary from summary_list
-
-    # Join the resulting summary list into one text
-    title = video_name(video_id)
-    summary = "\n\n".join(summary_list)
-
-    summary = f"<h2>{title}</h2> \n\n\n {summary}"
-
-    # Get bert topics as DF
-    topics = get_bert(punctuated_text, video_id)
-
-    # Return the result to streamlit
-
-    with _col1:
-        st.markdown(summary, unsafe_allow_html=True)
-    with _col2:
-        st.table(topics)
-
-    #### SAVE TEXT FILE TO PROCESS LATER ####
-    with open(f"results/{video_id}.txt", "w") as f:
-        f.write(summary)
-        f.close()
-
-    # option = st.selectbox(
-    #     'Select timstamp',
-    #     (each for each in timestamps),on_change=)
-
-    # st.write('You selected:', option)
-
-    st.video(link)
-
-# If we already have the summary of some video - return it
-elif summary:
-    summary = ""
-    with open(f"results/{text_file}", "r") as f:
-        for line in f.readlines():
-            summary += line
-    topics = pd.read_csv(f"topics/{video_id}.csv", index_col=0)
-    topics = color_df(topics)
-
-    with _col1:
-        st.markdown(summary, unsafe_allow_html=True)
-    with _col2:
-        st.table(topics)
-    st.video(link)
+with tab_chunk:
+    st.subheader("Split text into semantic chunks")
+    text = st.text_area("Paste text to chunk", height=200, key="chunk_text")
+    if st.button("Chunk"):
+        if not text.strip():
+            st.warning("Please paste some text first.")
+        else:
+            with st.spinner("Chunking…"):
+                ok, payload = api_request(
+                    "POST", "/chunk", base_url, json={"body": text}, timeout=QUICK_TIMEOUT
+                )
+            if ok:
+                chunks = payload.get("output", [])
+                st.success(f"{len(chunks)} chunk(s)")
+                for i, chunk in enumerate(chunks, start=1):
+                    with st.expander(f"Chunk {i}"):
+                        st.write(chunk)
+            else:
+                st.error(payload)
