@@ -25,14 +25,25 @@
   </a>
 </p>
 
-"Quint" is designed to enhance the podcast experience. It simplifies the process for users, making it easier for them to understand and navigate podcasts by providing concise summaries, highlights, and transcripts.
+**Quint turns long-form audio into something you can actually navigate.** Point it at a podcast, lecture, or interview — by YouTube URL or audio file — and it returns a clean transcript, semantically-chunked sections, and concise per-section summaries, through a simple API (and an optional web UI). It's open-source and self-hostable, built for developers, researchers, journalists, and anyone who wants searchable, skimmable audio without handing it to a closed service.
 
 ## Table of Contents
 
+- [Demo](#-demo)
 - [Main Functionality](#-main-functionality)
 - [Quickstart](#-quickstart)
 - [License](#-license)
 - [Deploy on a GPU cloud](#-how-to-deploy-this-api-on-cloud)
+
+## 🎬 Demo
+
+A live, in-browser demo (chunk + summarize a transcript) deploys to a free
+[Hugging Face Space](huggingface-space/) — no GPU required. See
+[`huggingface-space/`](huggingface-space/) for one-click deploy instructions.
+
+<!-- Once deployed, drop the live link here:
+▶️ **[Try Quint in your browser](https://huggingface.co/spaces/<your-username>/<space-name>)**
+-->
 
 ## 🚀 Main Functionality
 
