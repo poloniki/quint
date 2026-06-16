@@ -5,6 +5,9 @@
 </p>
 
 <p align="center">
+  <a href="https://pypi.org/project/quintessentia/">
+    <img src="https://img.shields.io/pypi/v/quintessentia?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI">
+  </a>
   <a href="https://github.com/poloniki/quint/actions/workflows/build.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/poloniki/quint/build.yml?branch=master&style=for-the-badge&logo=github&label=CI" alt="CI">
   </a>
@@ -101,7 +104,13 @@ GET /youtube_summarize?video_id=YOUR_YOUTUBE_VIDEO_ID
 
 ## 🧑‍💻 Quickstart
 
-Run the API locally — CPU is fine for chunking and summarization; transcription is far faster on a GPU (see [deploy](#-how-to-deploy-this-api-on-cloud)).
+Install from PyPI (the import package is `quint`):
+
+```shell
+pip install quintessentia
+```
+
+Or run the API locally from source — CPU is fine for chunking and summarization; transcription is far faster on a GPU (see [deploy](#-how-to-deploy-this-api-on-cloud)).
 
 ```shell
 git clone https://github.com/poloniki/quint.git
