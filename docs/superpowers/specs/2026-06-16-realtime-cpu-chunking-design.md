@@ -79,10 +79,14 @@ def stream_chunks(sentences, embed, threshold=0.5):
   so far?"*
 - **Properties:** single pass, O(n) time, O(1) extra state beyond the current chunk,
   one embedding per sentence, no matrix, no lookahead → works on a stream.
-- **Refinement (taught in the caveats section):** a long chunk's centroid can drift
-  away from its own start. Show the fix as a *relative* drop (compare similarity to a
-  short rolling baseline) and/or a **trailing-window centroid** (mean of the last k
-  sentences instead of the whole chunk). Feature one; mention the other.
+- **Normalization:** embeddings are L2-normalized (Model2Vec output already is; if not,
+  normalize explicitly) so `cosine()` compares vectors on a comparable scale and the
+  drift threshold has stable, model-agnostic semantics.
+- **Refinement (featured in the caveats section):** a long chunk's centroid can drift
+  away from its own start. The notebook **features the trailing-window centroid** (mean
+  of the last *k* sentences instead of the whole chunk) as the fix, and **mentions** the
+  relative-drop variant (similarity vs a short rolling baseline) as an alternative. Beat 6
+  and the live-demo similarity trace use the trailing-window version for consistency.
 
 ## 5. Notebook structure (the six beats)
 
@@ -126,7 +130,10 @@ def stream_chunks(sentences, embed, threshold=0.5):
 - **Benchmark fairness:** warm up both models before timing; use the same scaled text;
   report load time separately; average over a few runs with `time.perf_counter`.
 - **Quality metric:** "comparable to Part 1" = boundary agreement within ±1 sentence
-  plus a side-by-side excerpt — a sanity check, not a rigorous eval.
+  plus a side-by-side excerpt — a sanity check, not a rigorous eval. **Run the quality
+  comparison on the original (un-concatenated) transcript**: concatenated text is highly
+  self-similar and would make boundaries look artificially clean. Concatenation is used
+  *only* for the speed benchmark (beat 4), where the point is wall-clock vs length.
 
 ## 8. Out of scope (YAGNI)
 
