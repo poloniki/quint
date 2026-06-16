@@ -3,7 +3,9 @@ import numpy as np
 from quint.chunking.streaming import (
     merge_short_sentences,
     stream_boundaries,
+    stream_boundaries_adaptive,
     stream_chunks,
+    stream_chunks_adaptive,
 )
 
 
@@ -74,3 +76,39 @@ def test_handles_short_input():
     assert stream_chunks(["Only one sentence here."], lambda s: np.ones(8)) == [
         "Only one sentence here."
     ]
+
+
+def test_adaptive_clears_0_9_without_a_threshold():
+    """The adaptive chunker recovers seams with F1 >= 0.9 using only a scale-free
+    z (no absolute, corpus-specific threshold)."""
+    V, seams = _synthetic_harness()
+    sents = list(range(len(V)))
+    f = _f1(stream_boundaries_adaptive(sents, lambda i: V[i], z=1.3, min_size=2), seams)
+    assert f >= 0.9, f"adaptive F1 only {f:.2f}"
+
+
+def test_adaptive_no_singleton_chunks():
+    V, _ = _synthetic_harness()
+    bounds = stream_boundaries_adaptive(list(range(len(V))), lambda i: V[i], z=1.0)
+    edges = [0] + bounds + [len(V)]
+    sizes = [edges[i + 1] - edges[i] for i in range(len(edges) - 1)]
+    assert min(sizes) >= 2, sizes
+
+
+def test_adaptive_splits_two_topics_with_no_threshold_arg():
+    a = np.array([1.0, 0.0, 0.0])
+    b = np.array([0.0, 1.0, 0.0])
+    V = [a] * 6 + [b] * 6
+    assert stream_boundaries_adaptive(list(range(12)), lambda i: V[i], z=1.0) == [6]
+
+
+def test_adaptive_chunks_strings_end_to_end():
+    # topics longer than the warm-up (5) so the running baseline is seeded first
+    topic_a = [f"cats sentence number {i}" for i in range(6)]
+    topic_b = [f"stocks sentence number {i}" for i in range(6)]
+
+    def embed(s):
+        return np.array([1.0, 0.0]) if s.startswith("cats") else np.array([0.0, 1.0])
+
+    out = stream_chunks_adaptive(topic_a + topic_b, embed, merge_short=False)
+    assert len(out) == 2 and out[0].startswith("cats") and out[1].startswith("stocks")
