@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from quint.data.youtube import download_youtube_video
 from quint.preprocessing.audio import convert_mp4_to_flac
 from quint.params import AUDIO_PATH
-from quint.transcribtion.transcriber import Transcriber
+from quint.transcription.transcriber import Transcriber
 from quint.summarizing.summarizer import TextSummarizer
 
 from quint.chunking.generate import get_chunks
