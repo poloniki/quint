@@ -9,6 +9,6 @@ RUN apt-get install -y ffmpeg
 RUN pip install .
 RUN pip install git+https://github.com/openai/whisper.git
 RUN python -m spacy download en_core_web_lg
-ENV GPU_TYPE=T40
+# GPU_TYPE is optional, set at run time (-e GPU_TYPE=A100 enables bfloat16); unset => float16
 EXPOSE 80
 CMD ["gunicorn", "-b", "0.0.0.0:80", "quint.api.fast:app", "--workers", "1", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "320"]

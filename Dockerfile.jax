@@ -10,7 +10,7 @@ RUN apt-get install -y ffmpeg
 RUN pip install .
 RUN python -m spacy download en_core_web_lg
 RUN pip install --upgrade "jax[cuda12_pip]" -f https://storage.googleapis.com/jax-releases/jax_cuda_releases.html
-ENV GPU_TYPE=T40
+# GPU_TYPE is optional, set at run time (-e GPU_TYPE=A100 enables bfloat16); unset => float16
 ENV ENV=JAX
 EXPOSE 80
 CMD ["gunicorn", "-b", "0.0.0.0:80", "quint.api.fast:app", "--workers", "1", "-k", "uvicorn.workers.UvicornWorker", "--timeout", "320"]
