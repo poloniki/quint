@@ -1,0 +1,12 @@
+# Tooling config only — packaging still lives in setup.py / requirements.txt.
+
+[tool.ruff]
+target-version = "py310"
+line-length = 88
+# frontend/ is a legacy Streamlit prototype that targets an older architecture
+# and no longer imports cleanly; notebooks are exploratory. Exclude both.
+extend-exclude = ["frontend", "notebooks"]
+
+[tool.ruff.lint]
+# Mirror ruff's default rule set explicitly so CI is deterministic across versions.
+select = ["E4", "E7", "E9", "F"]

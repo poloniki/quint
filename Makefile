@@ -15,3 +15,15 @@ clean:
 
 run_api:
 	uvicorn quint.api.fast:app --port 8083 --reload
+
+install:
+	@pip install -e .
+
+test:
+	@pytest -v
+
+lint:
+	@ruff check .
+
+format:
+	@ruff format .

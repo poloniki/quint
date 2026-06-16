@@ -3,7 +3,11 @@ from setuptools import setup
 
 with open("requirements.txt") as f:
     content = f.readlines()
-requirements = [x.strip() for x in content if "git+" not in x]
+requirements = [
+    line.strip()
+    for line in content
+    if line.strip() and not line.startswith("#") and "git+" not in line
+]
 
 setup(
     name="quint",
