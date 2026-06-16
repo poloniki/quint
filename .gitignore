@@ -3,7 +3,6 @@ raw_data/
 **/__pycache__/
 .env
 .env.yaml
-*.gitignore
 
 # System files
 .DS_Store
@@ -15,9 +14,13 @@ dist/
 .coverage
 *.iml
 *.egg-info
-*.vscode
+.vscode/
 
 # Data files
+*.flac
+*.wav
+*.mp3
+jax_cache/
 *.rar
 *.csv
 *.sqlite
