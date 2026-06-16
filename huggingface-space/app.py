@@ -125,14 +125,14 @@ def process(text: str) -> str:
 demo = gr.Interface(
     fn=process,
     inputs=gr.Textbox(lines=12, label="Transcript / long text", value=SAMPLE),
-    outputs=gr.Markdown(label="Chunked sections + summaries"),
+    outputs=gr.Markdown(),
     title="Quint — chunk & summarize",
     description=(
         "Paste a transcript; Quint splits it into semantic sections and summarizes "
-        "each. Transcription (Whisper) needs a GPU — see the repo for the full API."
+        "each. Transcription (Whisper) needs a GPU — see the "
+        "[repo](https://github.com/poloniki/quint) for the full API. "
+        "`pip install quintessentia`"
     ),
-    article="Powered by [Quint](https://github.com/poloniki/quint) · `pip install quintessentia`",
-    allow_flagging="never",
 )
 
 if __name__ == "__main__":
