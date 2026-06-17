@@ -1,7 +1,9 @@
-# Lightweight deps (gradio comes from the Space SDK). Model2Vec gives fast static
-# embeddings with no torch; we intentionally do not install the full quintessentia
-# package (its 2022-era spaCy pin needs Pydantic v1, which conflicts with Gradio v2).
+# Lightweight deps (gradio comes from the Space SDK). Model2Vec = fast static
+# embeddings with no torch; sherpa-onnx = small streaming CPU speech-to-text
+# (prebuilt wheels). We do not install the full quintessentia package (its
+# 2022-era spaCy pin needs Pydantic v1, which conflicts with Gradio v2).
 model2vec
+sherpa-onnx
 pysbd
 numpy
 openai>=1.0
