@@ -13,6 +13,7 @@ Set OPENAI_API_KEY as a Space secret for the summaries tab.
 
 import glob
 import os
+import re
 import tarfile
 import time
 import urllib.request
@@ -76,9 +77,24 @@ SILENCE_RMS = 0.008          # below this a chunk counts as silence
 PAUSE_SEC = 0.5             # this much quiet after speech closes an utterance
 MIN_UTT = SR * 1            # need >= 1 s of audio before transcribing
 MAX_UTT = SR * 15          # safety flush so a runaway buffer can't stall
-# Moonshine's stock outputs on silence/noise — drop so they don't pollute the text
-_HALLUC = {"you", "you.", ".", "bye.", "thank you.", "thanks for watching!",
-           "thank you for watching!", "thank you very much."}
+# Moonshine/Whisper invent stock filler on silence/noise — drop such whole sentences
+_HALLUC_SENTS = {
+    "you", "thank you", "thank you very much", "thank you so much", "thanks",
+    "thanks for watching", "thank you for watching", "thank you my lord",
+    "please subscribe", "bye", "bye bye", "goodbye", "yeah", "yep", "okay",
+    "ok", "mm", "mm-hmm", "i'm sorry", "sorry",
+}
+_HALLUC_RE = re.compile(r"[^a-z'\- ]")
+
+
+def _drop_hallucinations(text):
+    """Drop whole sentences that are just stock ASR-hallucination filler."""
+    keep = []
+    for s in seg.segment(text):
+        norm = _HALLUC_RE.sub("", s.lower()).strip().strip("-").strip()
+        if norm and norm not in _HALLUC_SENTS:
+            keep.append(s)
+    return " ".join(keep).strip()
 
 
 def _new_state():
@@ -125,8 +141,8 @@ def _flush(state):
         return
     audio = np.concatenate(state["buf"]).astype(np.float32)
     state["buf"], state["voiced"] = [], False
-    text = _transcribe(audio)
-    if text and text.lower() not in _HALLUC:
+    text = _drop_hallucinations(_transcribe(audio))
+    if text:
         state["transcript"] = f"{state['transcript']} {text}".strip()
         state["paras"] = _chunk(state["transcript"])
 
