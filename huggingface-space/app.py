@@ -1,10 +1,12 @@
 """Quint — real-time speech → paragraphs demo (Hugging Face Space).
 
-Speak into the mic and watch it transcribe live (sherpa-onnx streaming CPU
-speech-to-text), restore punctuation (sherpa-onnx CT-transformer), and group the
-sentences into semantic paragraphs on the fly (Model2Vec static embeddings + a
-single-pass, self-calibrating chunker, mirroring quint.chunking.streaming). No
-GPU. Set OPENAI_API_KEY as a Space secret for the summaries tab.
+Speak into the mic and watch it transcribe and group into semantic paragraphs.
+Speech-to-text is offline Whisper (sherpa-onnx, ONNX/CPU, no torch): we buffer
+the mic audio, detect a pause, transcribe the utterance — Whisper returns clean,
+punctuated, properly-cased text — then segment it and group the sentences into
+semantic paragraphs with Model2Vec static embeddings + a single-pass,
+self-calibrating chunker (mirroring quint.chunking.streaming). No GPU.
+Set OPENAI_API_KEY as a Space secret for the summaries tab.
 """
 
 import glob
@@ -21,7 +23,7 @@ from model2vec import StaticModel
 
 seg = pysbd.Segmenter(language="en", clean=False)
 model = StaticModel.from_pretrained("minishlab/potion-base-8M")
-Z, WARMUP, MIN_SIZE, MIN_WORDS = 1.3, 5, 2, 4
+Z, WARMUP, MIN_SIZE, MIN_WORDS = 1.3, 3, 2, 4   # warmup 3 (vs lib's 5): short demo inputs
 
 
 def embed(s):
@@ -29,11 +31,9 @@ def embed(s):
     return v / (np.linalg.norm(v) + 1e-9)
 
 
-# ------------------------------------------------------------------ speech models
-RECOGNIZER = None
-PUNCT = None
-_STT_MODEL = "sherpa-onnx-streaming-zipformer-en-2023-06-26"
-_PUNCT_MODEL = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12"
+# ------------------------------------------------------------------ speech-to-text
+WHISPER = None
+_W_MODEL = "sherpa-onnx-whisper-base.en"          # ~145 MB int8, punctuated + cased
 
 
 def _fetch(name, kind):
@@ -46,108 +46,120 @@ def _fetch(name, kind):
 
 
 def _load_models():
-    global RECOGNIZER, PUNCT
+    global WHISPER
     try:
         import sherpa_onnx
 
-        _fetch(_STT_MODEL, "asr-models")
-        enc = glob.glob(f"{_STT_MODEL}/encoder*int8.onnx")[0]
-        dec = glob.glob(f"{_STT_MODEL}/decoder*.onnx")[0]
-        joi = glob.glob(f"{_STT_MODEL}/joiner*int8.onnx")[0]
-        RECOGNIZER = sherpa_onnx.OnlineRecognizer.from_transducer(
-            tokens=f"{_STT_MODEL}/tokens.txt", encoder=enc, decoder=dec, joiner=joi,
-            num_threads=2, sample_rate=16000, feature_dim=80,
-            enable_endpoint_detection=True, decoding_method="greedy_search",
+        _fetch(_W_MODEL, "asr-models")
+        enc = glob.glob(f"{_W_MODEL}/*encoder*.int8.onnx")[0]
+        dec = glob.glob(f"{_W_MODEL}/*decoder*.int8.onnx")[0]
+        tok = glob.glob(f"{_W_MODEL}/*tokens.txt")[0]
+        WHISPER = sherpa_onnx.OfflineRecognizer.from_whisper(
+            encoder=enc, decoder=dec, tokens=tok, num_threads=2,
         )
-        print("STT ready")
-        _fetch(_PUNCT_MODEL, "punctuation-models")
-        PUNCT = sherpa_onnx.OfflinePunctuation(
-            sherpa_onnx.OfflinePunctuationConfig(
-                model=sherpa_onnx.OfflinePunctuationModelConfig(
-                    ct_transformer=f"{_PUNCT_MODEL}/model.onnx", num_threads=1
-                )
-            )
-        )
-        print("punctuation ready")
-    except Exception as exc:  # noqa: BLE001 - degrade gracefully
-        print("speech models unavailable:", exc)
+        print("whisper ready")
+    except Exception as exc:  # noqa: BLE001 - degrade gracefully if unavailable
+        print("speech model unavailable:", exc)
 
 
 _load_models()
+
+# ---- mic session (single-user demo): buffer audio, flush an utterance on a pause
+SR = 16000
+SILENCE_RMS = 0.008          # below this a chunk counts as silence
+PAUSE_SEC = 0.55            # this much quiet after speech closes an utterance
+MIN_UTT = SR * 1            # need >= 1 s of audio before transcribing
+MAX_UTT = SR * 28          # safety flush just under Whisper's 30 s window (avoids mid-word cuts)
+# Whisper's stock outputs on silence/noise — drop so they don't pollute the text
+_HALLUC = {"you", "you.", ".", "bye.", "thank you.", "thanks for watching!",
+           "thank you for watching!", "thank you very much."}
 
 _S = {}
 
 
 def _reset():
     _S.clear()
-    _S.update(stream=None, raw="", paras=[], display="", since=0)
+    _S.update(buf=[], voiced=False, last_voice=0.0, transcript="", paras=[])
 
 
 _reset()
 
-_CJK = {"。": ". ", "，": ", ", "？": "? ", "！": "! ", "、": ", ", "；": "; ", "：": ": "}
+
+def _resample(y, sr):
+    """Linear-resample mono float audio to 16 kHz (browsers usually send 48 kHz)."""
+    if sr == SR or len(y) == 0:
+        return y
+    n = max(1, round(len(y) * SR / sr))
+    xp = np.linspace(0.0, 1.0, num=len(y), endpoint=False)
+    x = np.linspace(0.0, 1.0, num=n, endpoint=False)
+    return np.interp(x, xp, y).astype(np.float32)
 
 
-def _punctuate(text):
-    """Restore punctuation on raw ASR text, normalize to ASCII, capitalize starts."""
-    text = text.strip()
-    if not text:
+def _transcribe(audio):
+    try:
+        st = WHISPER.create_stream()
+        st.accept_waveform(SR, audio)
+        WHISPER.decode_stream(st)
+        return st.result.text.strip()
+    except Exception as exc:  # noqa: BLE001
+        print("transcribe failed:", exc)
         return ""
-    if PUNCT is not None:
-        text = PUNCT.add_punctuation(text)
-        for a, b in _CJK.items():
-            text = text.replace(a, b)
-    out, cap = [], True
-    for ch in text:
-        out.append(ch.upper() if cap and ch.isalpha() else ch)
-        if ch in ".!?":
-            cap = True
-        elif not ch.isspace():
-            cap = False
-    return "".join(out)
 
 
-def _recompute(text):
-    """Re-punctuate, re-segment, and re-chunk the running transcript."""
-    punctuated = _punctuate(text)
-    sents = seg.segment(punctuated) if punctuated else []
+def _recompute():
+    sents = seg.segment(_S["transcript"])
     if len(sents) > 1:
         _S["paras"] = chunk_adaptive(sents)
     else:
-        _S["paras"] = [punctuated] if punctuated else []
+        _S["paras"] = [_S["transcript"]] if _S["transcript"] else []
+
+
+def _render(status=""):
     body = "".join(f"**¶ {i}** — {p}\n\n" for i, p in enumerate(_S["paras"], 1))
-    _S["display"] = f"#### 📑 paragraphs\n\n{body or '_listening…_'}"
+    md = "#### 📑 paragraphs\n\n" + (body or "_start talking…_\n\n")
+    return md + (f"`{status}`" if status else "")
+
+
+def _flush():
+    """Transcribe the buffered utterance, append it, and re-chunk."""
+    if not _S["buf"]:
+        return
+    audio = np.concatenate(_S["buf"]).astype(np.float32)
+    _S["buf"], _S["voiced"] = [], False
+    text = _transcribe(audio)
+    if text and text.lower() not in _HALLUC:
+        _S["transcript"] = f"{_S['transcript']} {text}".strip()
+        _recompute()
 
 
 def on_mic(new_chunk):
-    if RECOGNIZER is None:
-        return "Speech model still loading (first run downloads ~360 MB) or unavailable — try the text tabs."
-    if new_chunk is None:
-        return _S["display"] or "_listening…_"
+    if WHISPER is None:
+        return "Speech model is still loading (first run downloads ~145 MB) or unavailable — try the text tabs."
+    if new_chunk is None:                           # stream paused/ended -> flush trailing audio
+        if _S["voiced"] and sum(len(c) for c in _S["buf"]) >= MIN_UTT:
+            _flush()
+        return _render()
     sr, y = new_chunk
     y = np.asarray(y, dtype=np.float32)
     if y.ndim > 1:
         y = y.mean(axis=1)
-    if np.max(np.abs(y)) > 1.5:                 # int16 -> float [-1, 1]
+    if len(y) and np.max(np.abs(y)) > 1.5:          # int16 -> float [-1, 1]
         y = y / 32768.0
-    if _S["stream"] is None:
-        _S["stream"] = RECOGNIZER.create_stream()
-    st = _S["stream"]
-    st.accept_waveform(sr, y)
-    while RECOGNIZER.is_ready(st):
-        RECOGNIZER.decode_stream(st)
-    partial = RECOGNIZER.get_result(st).strip().lower()
-    endpoint = RECOGNIZER.is_endpoint(st)
-    if endpoint:
-        if partial:
-            _S["raw"] = f"{_S['raw']} {partial}".strip()
-        RECOGNIZER.reset(st)
-        partial = ""
-    _S["since"] += 1
-    if endpoint or _S["since"] >= 10:            # throttle re-punctuation
-        _S["since"] = 0
-        _recompute(f"{_S['raw']} {partial}".strip())
-    return _S["display"] or "_listening…_"
+    y = _resample(y, sr)
+    rms = float(np.sqrt(np.mean(y ** 2))) if len(y) else 0.0
+    now = time.time()
+    if rms >= SILENCE_RMS:
+        _S["voiced"], _S["last_voice"] = True, now
+    _S["buf"].append(y)
+    total = sum(len(c) for c in _S["buf"])
+    if not _S["voiced"] and total > SR * 2:         # drop leading silence
+        _S["buf"] = _S["buf"][-2:]
+        total = sum(len(c) for c in _S["buf"])
+    quiet = now - (_S["last_voice"] or now)
+    if _S["voiced"] and ((quiet > PAUSE_SEC and total >= MIN_UTT) or total >= MAX_UTT):
+        _flush()
+        return _render()
+    return _render(f"🎤 listening… {total / SR:.1f}s buffered")
 
 
 def _clear_mic():
@@ -283,17 +295,18 @@ def chunk_and_summarize(text):
 # ------------------------------------------------------------------ UI
 with gr.Blocks(title="Quint — real-time speech to paragraphs") as demo:
     gr.Markdown(
-        "# 🎙️ Quint — real-time speech → paragraphs\n"
-        "Speak (or paste text) and watch it transcribe, punctuate, and group into "
-        "semantic paragraphs **live, on a CPU**. "
+        "# 🎙️ Quint — speech → semantic paragraphs\n"
+        "Speak (or paste text) and watch it transcribe and group into semantic "
+        "paragraphs **on a CPU**. "
         "[Code](https://github.com/poloniki/quint) · `pip install quintessentia`"
     )
     with gr.Tab("🎙️ Live mic"):
         gr.Markdown(
-            "Click the mic, allow access, and start talking. It transcribes with a "
-            "small streaming model, restores punctuation, and groups your sentences "
-            "into paragraphs on the fly. _English; first use downloads ~360 MB of models, "
-            "so the very first response can take a minute._"
+            "Click the mic, allow access, and talk. It buffers your audio, and when "
+            "you **pause** it transcribes the sentence (offline Whisper — clean, "
+            "punctuated text) and folds it into the right semantic paragraph. "
+            "_English; first use downloads ~145 MB, so the very first response can "
+            "take a minute._"
         )
         mic = gr.Audio(sources=["microphone"], streaming=True, label="microphone")
         clear = gr.Button("Clear / restart")
