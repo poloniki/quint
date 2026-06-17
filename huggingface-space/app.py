@@ -1,10 +1,10 @@
 """Quint — real-time speech → paragraphs demo (Hugging Face Space).
 
-A full little product: speak into the mic, watch it transcribe live (sherpa-onnx
-streaming CPU speech-to-text) and group the utterances into semantic paragraphs
-on the fly (Model2Vec static embeddings + a single-pass, self-calibrating chunker,
-mirroring quint.chunking.streaming). No GPU. Set OPENAI_API_KEY as a Space secret
-for the summaries tab.
+Speak into the mic and watch it transcribe live (sherpa-onnx streaming CPU
+speech-to-text), restore punctuation (sherpa-onnx CT-transformer), and group the
+sentences into semantic paragraphs on the fly (Model2Vec static embeddings + a
+single-pass, self-calibrating chunker, mirroring quint.chunking.streaming). No
+GPU. Set OPENAI_API_KEY as a Space secret for the summaries tab.
 """
 
 import glob
@@ -29,26 +29,28 @@ def embed(s):
     return v / (np.linalg.norm(v) + 1e-9)
 
 
-# ------------------------------------------------------------------ speech-to-text
+# ------------------------------------------------------------------ speech models
 RECOGNIZER = None
+PUNCT = None
 _STT_MODEL = "sherpa-onnx-streaming-zipformer-en-2023-06-26"
+_PUNCT_MODEL = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12"
 
 
-def _load_stt():
-    """Best-effort: download the small streaming model and build the recognizer."""
-    global RECOGNIZER
+def _fetch(name, kind):
+    if not os.path.isdir(name):
+        url = f"https://github.com/k2-fsa/sherpa-onnx/releases/download/{kind}/{name}.tar.bz2"
+        print(f"downloading {name}…")
+        urllib.request.urlretrieve(url, "m.tar.bz2")
+        with tarfile.open("m.tar.bz2") as t:
+            t.extractall(".")
+
+
+def _load_models():
+    global RECOGNIZER, PUNCT
     try:
         import sherpa_onnx
 
-        if not os.path.isdir(_STT_MODEL):
-            url = (
-                "https://github.com/k2-fsa/sherpa-onnx/releases/download/"
-                f"asr-models/{_STT_MODEL}.tar.bz2"
-            )
-            print("downloading STT model…")
-            urllib.request.urlretrieve(url, "stt.tar.bz2")
-            with tarfile.open("stt.tar.bz2") as t:
-                t.extractall(".")
+        _fetch(_STT_MODEL, "asr-models")
         enc = glob.glob(f"{_STT_MODEL}/encoder*int8.onnx")[0]
         dec = glob.glob(f"{_STT_MODEL}/decoder*.onnx")[0]
         joi = glob.glob(f"{_STT_MODEL}/joiner*int8.onnx")[0]
@@ -58,64 +60,75 @@ def _load_stt():
             enable_endpoint_detection=True, decoding_method="greedy_search",
         )
         print("STT ready")
-    except Exception as exc:  # noqa: BLE001 - degrade gracefully if STT can't load
-        print("STT unavailable:", exc)
+        _fetch(_PUNCT_MODEL, "punctuation-models")
+        PUNCT = sherpa_onnx.OfflinePunctuation(
+            sherpa_onnx.OfflinePunctuationConfig(
+                model=sherpa_onnx.OfflinePunctuationModelConfig(
+                    ct_transformer=f"{_PUNCT_MODEL}/model.onnx", num_threads=1
+                )
+            )
+        )
+        print("punctuation ready")
+    except Exception as exc:  # noqa: BLE001 - degrade gracefully
+        print("speech models unavailable:", exc)
 
 
-_load_stt()
+_load_models()
 
-# one global session (this is a single-user demo)
 _S = {}
 
 
 def _reset():
     _S.clear()
-    _S.update(stream=None, transcript="", paras=[], cur=[], centroid=None, n=0,
-              seen=deque(maxlen=256))
+    _S.update(stream=None, raw="", paras=[], display="", since=0)
 
 
 _reset()
 
+_CJK = {"。": ". ", "，": ", ", "？": "? ", "！": "! ", "、": ", ", "；": "; ", "：": ": "}
 
-def _feed(utterance):
-    """Online-chunk one finalized utterance (treated as one 'sentence')."""
-    v = embed(utterance)
-    if _S["centroid"] is None:
-        _S["cur"], _S["centroid"], _S["n"] = [utterance], v, 1
-        return
-    sim = float(v @ _S["centroid"])
-    drift = len(_S["seen"]) >= WARMUP and sim < (
-        float(np.mean(_S["seen"])) - Z * (float(np.std(_S["seen"])) + 1e-9)
-    )
-    if drift and len(_S["cur"]) >= MIN_SIZE:
-        _S["paras"].append(" ".join(_S["cur"]))
-        _S["cur"], _S["centroid"], _S["n"] = [utterance], v, 1
+
+def _punctuate(text):
+    """Restore punctuation on raw ASR text, normalize to ASCII, capitalize starts."""
+    text = text.strip()
+    if not text:
+        return ""
+    if PUNCT is not None:
+        text = PUNCT.add_punctuation(text)
+        for a, b in _CJK.items():
+            text = text.replace(a, b)
+    out, cap = [], True
+    for ch in text:
+        out.append(ch.upper() if cap and ch.isalpha() else ch)
+        if ch in ".!?":
+            cap = True
+        elif not ch.isspace():
+            cap = False
+    return "".join(out)
+
+
+def _recompute(text):
+    """Re-punctuate, re-segment, and re-chunk the running transcript."""
+    punctuated = _punctuate(text)
+    sents = seg.segment(punctuated) if punctuated else []
+    if len(sents) > 1:
+        _S["paras"] = chunk_adaptive(sents)
     else:
-        _S["seen"].append(sim)
-        _S["cur"].append(utterance)
-        _S["n"] += 1
-        _S["centroid"] = _S["centroid"] + (v - _S["centroid"]) / _S["n"]
-
-
-def _render(partial=""):
-    live = (_S["transcript"] + " " + partial).strip()
-    md = f"#### 🎧 live transcript\n> {live or '…'}\n\n#### 📑 paragraphs\n"
-    paras = _S["paras"] + ([" ".join(_S["cur"])] if _S["cur"] else [])
-    for i, p in enumerate(paras, 1):
-        md += f"**¶ {i}** — {p}\n\n"
-    return md
+        _S["paras"] = [punctuated] if punctuated else []
+    body = "".join(f"**¶ {i}** — {p}\n\n" for i, p in enumerate(_S["paras"], 1))
+    _S["display"] = f"#### 📑 paragraphs\n\n{body or '_listening…_'}"
 
 
 def on_mic(new_chunk):
     if RECOGNIZER is None:
-        return "Speech-to-text model is still loading or unavailable — try the other tabs."
+        return "Speech model still loading (first run downloads ~360 MB) or unavailable — try the text tabs."
     if new_chunk is None:
-        return _render()
+        return _S["display"] or "_listening…_"
     sr, y = new_chunk
     y = np.asarray(y, dtype=np.float32)
     if y.ndim > 1:
         y = y.mean(axis=1)
-    if np.max(np.abs(y)) > 1.5:      # int16 -> float [-1, 1]
+    if np.max(np.abs(y)) > 1.5:                 # int16 -> float [-1, 1]
         y = y / 32768.0
     if _S["stream"] is None:
         _S["stream"] = RECOGNIZER.create_stream()
@@ -124,13 +137,22 @@ def on_mic(new_chunk):
     while RECOGNIZER.is_ready(st):
         RECOGNIZER.decode_stream(st)
     partial = RECOGNIZER.get_result(st).strip().lower()
-    if RECOGNIZER.is_endpoint(st):
+    endpoint = RECOGNIZER.is_endpoint(st)
+    if endpoint:
         if partial:
-            _S["transcript"] += " " + partial
-            _feed(partial)
+            _S["raw"] = f"{_S['raw']} {partial}".strip()
         RECOGNIZER.reset(st)
         partial = ""
-    return _render(partial)
+    _S["since"] += 1
+    if endpoint or _S["since"] >= 10:            # throttle re-punctuation
+        _S["since"] = 0
+        _recompute(f"{_S['raw']} {partial}".strip())
+    return _S["display"] or "_listening…_"
+
+
+def _clear_mic():
+    _reset()
+    return "Reset — start talking…"
 
 
 # ------------------------------------------------------------------ text streaming
@@ -194,7 +216,19 @@ def live_chunk(text, speed):
     yield render(f"\n\n**✅ {len(done)} paragraphs — one streaming pass, no fixed threshold.**")
 
 
+def merge_short(sentences, min_words=MIN_WORDS):
+    """Fold sub-``min_words`` fragments (common in raw ASR) into the previous one."""
+    out = []
+    for s in sentences:
+        if out and len(s.split()) < min_words:
+            out[-1] = f"{out[-1]} {s}"
+        else:
+            out.append(s)
+    return out
+
+
 def chunk_adaptive(sentences):
+    sentences = merge_short(sentences)
     cuts, centroid, n, start, seen = [], None, 0, 0, []
     for i, s in enumerate(sentences):
         v = embed(s)
@@ -250,21 +284,22 @@ def chunk_and_summarize(text):
 with gr.Blocks(title="Quint — real-time speech to paragraphs") as demo:
     gr.Markdown(
         "# 🎙️ Quint — real-time speech → paragraphs\n"
-        "Speak (or paste text) and watch it transcribe and group into semantic "
-        "paragraphs **live, on a CPU**. [Code](https://github.com/poloniki/quint) · "
-        "`pip install quintessentia`"
+        "Speak (or paste text) and watch it transcribe, punctuate, and group into "
+        "semantic paragraphs **live, on a CPU**. "
+        "[Code](https://github.com/poloniki/quint) · `pip install quintessentia`"
     )
     with gr.Tab("🎙️ Live mic"):
         gr.Markdown(
             "Click the mic, allow access, and start talking. It transcribes with a "
-            "small streaming model and groups your sentences into paragraphs on the fly. "
-            "_English; first use downloads a ~70 MB model._"
+            "small streaming model, restores punctuation, and groups your sentences "
+            "into paragraphs on the fly. _English; first use downloads ~360 MB of models, "
+            "so the very first response can take a minute._"
         )
         mic = gr.Audio(sources=["microphone"], streaming=True, label="microphone")
         clear = gr.Button("Clear / restart")
         mic_out = gr.Markdown()
         mic.stream(on_mic, mic, mic_out)
-        clear.click(lambda: (_reset(), _render())[1], None, mic_out)
+        clear.click(_clear_mic, None, mic_out)
     with gr.Tab("🔴 Live streaming (text)"):
         gr.Markdown("No mic? Paste a transcript and watch the paragraphs form, one pass.")
         inp = gr.Textbox(value=SAMPLE, lines=8, label="Transcript (paste anything)")
