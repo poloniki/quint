@@ -1,4 +1,4 @@
-# Quint: transcribe | chunk | summarize
+# Quint — real-time speech → semantic paragraphs
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/poloniki/quint/master/frontend/logo.png" alt="Quint logo">
@@ -9,7 +9,7 @@
     <img src="https://img.shields.io/pypi/v/quintessentia?style=for-the-badge&logo=pypi&logoColor=white&label=PyPI" alt="PyPI">
   </a>
   <a href="https://huggingface.co/spaces/poloniki/quint-demo">
-    <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Demo-Live-yellow?style=for-the-badge" alt="Live demo on Hugging Face Spaces">
+    <img src="https://img.shields.io/badge/%F0%9F%A4%97%20Live%20demo-Talk%20to%20it-yellow?style=for-the-badge" alt="Live demo on Hugging Face Spaces">
   </a>
   <a href="https://github.com/poloniki/quint/actions/workflows/build.yml">
     <img src="https://img.shields.io/github/actions/workflow/status/poloniki/quint/build.yml?branch=master&style=for-the-badge&logo=github&label=CI" alt="CI">
@@ -17,100 +17,78 @@
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT">
   </a>
-  <a href="https://fastapi.tiangolo.com">
-    <img src="https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi" alt="FastAPI">
-  </a>
   <a href="https://www.python.org/downloads/release/python-3100/">
     <img src="https://img.shields.io/badge/python-3.10-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54" alt="Python 3.10">
   </a>
-  <a href="https://hub.docker.com/r/poloniki/quint">
-    <img src="https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white" alt="Docker">
-  </a>
 </p>
 
-**Quint turns long-form audio into something you can actually navigate.** Point it at a podcast, lecture, or interview — by YouTube URL or audio file — and it returns a clean transcript, semantically-chunked sections, and concise per-section summaries, through a simple API (and an optional web UI). It's open-source and self-hostable, built for developers, researchers, journalists, and anyone who wants searchable, skimmable audio without handing it to a closed service.
+**Quint turns speech into clean, semantically-grouped paragraphs — in real time, on a CPU, no GPU.** Talk into a microphone (or feed it a live transcript) and Quint transcribes it, restores punctuation, and groups the sentences into coherent paragraphs *the instant each one closes* — driven by a single-pass streaming chunker built on fast static embeddings. It also ships a batch API for turning podcasts, lectures, and YouTube videos into transcribed, chunked, and summarized text. Open-source and self-hostable.
 
 ## Table of Contents
 
-- [Demo](#-demo)
-- [Main Functionality](#-main-functionality)
+- [Live demo](#-live-demo)
+- [Real-time semantic chunking](#-real-time-semantic-chunking)
+- [How the live demo works](#-how-the-live-demo-works)
+- [Batch API](#-batch-api-transcribe--chunk--summarize)
 - [Quickstart](#-quickstart)
 - [License](#-license)
-- [Deploy on a GPU cloud](#-how-to-deploy-this-api-on-cloud)
+- [Deploy on a GPU cloud](#-deploy-the-batch-api-on-a-gpu-cloud)
 
-## 🎬 Demo
+## 🎬 Live demo
 
-▶️ **[Try Quint in your browser](https://huggingface.co/spaces/poloniki/quint-demo)** — paste a transcript and watch it get split into semantic sections and summarized. No install, no GPU.
+▶️ **[Talk to it in your browser](https://huggingface.co/spaces/poloniki/quint-demo)** — speak into your mic and watch it transcribe, punctuate, and group your words into semantic paragraphs **live, on a free CPU Space**. No install, no GPU. (There are also text tabs: paste a transcript to watch paragraphs form one pass, or chunk + summarize.)
 
-The demo runs on a free [Hugging Face Space](https://huggingface.co/spaces/poloniki/quint-demo); its source and auto-deploy setup live in [`huggingface-space/`](huggingface-space/).
+The demo's source and auto-deploy setup live in [`huggingface-space/`](huggingface-space/).
 
-## 🚀 Main Functionality
+## ⚡ Real-time semantic chunking
 
-Below is a list of the core API endpoints offered by Quint:
+The heart of Quint is a **single-pass streaming chunker** ([`quint/chunking/streaming.py`](quint/chunking/streaming.py)): it reads sentences one at a time, compares each to a running topic centroid, and closes a paragraph the moment the topic drifts. No O(n²) similarity matrix and no lookahead — so it runs on a *live* stream with only bounded memory.
 
-Once the API is running (see [Quickstart](#-quickstart)), interactive docs are available at `/docs`.
+The split rule is **self-calibrating**: it opens a new paragraph when a sentence is anomalously dissimilar relative to the running mean/spread seen so far (`sim < mean − z·std`). The knob `z` is scale-free (standard deviations), needs no per-corpus tuning, and adapts to each document — the right behaviour for true streaming.
 
-### 🎥 YouTube Video Transcription
+Pair it with [Model2Vec](https://github.com/MinishLab/model2vec) static embeddings (~30 MB, no torch, ~80 µs/sentence) for real-time chunking on a CPU:
 
-Provide a YouTube video ID. Quint fetches the video, extracts its audio, and returns a transcription.
+```python
+from model2vec import StaticModel
+from quint.chunking.streaming import stream_chunks_live, stream_chunks_adaptive
 
-```http
-GET /youtube_transcript?video_id=YOUR_YOUTUBE_VIDEO_ID
+model = StaticModel.from_pretrained("minishlab/potion-base-8M")  # fast static embeddings
+def embed(sentence):
+    return model.encode(sentence)
+
+# Streaming: yields each paragraph the instant it closes (e.g. words from speech-to-text)
+for paragraph in stream_chunks_live(sentence_stream, embed):
+    print(paragraph)
+
+# Batch list-in / list-out, same self-calibrating rule:
+paragraphs = stream_chunks_adaptive(my_sentences, embed)
 ```
 
-```json
-{ "transcript": "The transcribed text of the video goes here..." }
+`stream_chunks(sentences, embed, threshold=...)` is also available if you prefer a fixed threshold. The chunker is embedding-agnostic — pass any callable mapping a sentence to a vector (it's L2-normalized internally), so `sentence-transformers`, OpenAI embeddings, etc. all work.
+
+## 🛠 How the live demo works
+
+The mic pipeline in [`huggingface-space/app.py`](huggingface-space/app.py) is a small, fully-local CPU stack — no GPU, no torch:
+
+```
+mic audio → buffer until a pause → Moonshine STT → restore punctuation → semantic chunker → paragraphs
 ```
 
-### 🎙️ Transcription from Audio File
+- **Speech-to-text:** [Moonshine](https://github.com/usefulsensors/moonshine) (base.en, via [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)). Its encoder scales compute with the actual audio length instead of Whisper's fixed 30 s window, so short pause-delimited utterances transcribe in tens of milliseconds.
+- **Punctuation:** a CT-transformer restores sentence punctuation on Moonshine's run-ons (selectively — well-formed sentences pass through untouched), so paragraphs break at real sentence ends.
+- **Chunking:** Model2Vec embeddings + the streaming chunker above.
 
-Upload an audio file and receive its transcription in text format.
+## 🚀 Batch API (transcribe · chunk · summarize)
 
-```http
-POST /file_transcript
-```
+Quint also runs as a FastAPI service for long-form audio. Once it's running (see [Quickstart](#-quickstart)), interactive docs are at `/docs`.
 
-```json
-{ "transcript": "The transcribed text of the audio goes here..." }
-```
-
-### 📜 Text Chunking
-
-Submit a lengthy text and get it divided into semantically meaningful chunks or paragraphs.
-
-```http
-POST /chunk
-{ "body": "Your lengthy continuous text here..." }
-```
-
-```json
-{ "output": ["Chunk 1", "Chunk 2", "..."] }
-```
-
-### 🌟 Highlight the Best Sentence
-
-Submit a text and Quint returns the index of the most descriptive sentence based on the embeddings.
-
-```http
-POST /best_sentence
-{ "body": "Your raw text here..." }
-```
-
-```json
-{ "best_sentence_index": 5 }
-```
-
-### 📝 YouTube Summary
-
-Provide a YouTube video ID to get back a list of chunked summaries of the video.
-
-```http
-GET /youtube_summarize?video_id=YOUR_YOUTUBE_VIDEO_ID
-```
-
-```json
-{ "summary": ["Summary of part 1", "Summary of part 2", "..."] }
-```
+| Endpoint | Does |
+| --- | --- |
+| `GET /youtube_transcript?video_id=…` | Fetch a YouTube video's audio and transcribe it |
+| `POST /file_transcript` | Transcribe an uploaded audio file |
+| `POST /chunk` `{ "body": "…" }` | Split long text into semantic paragraphs → `{ "output": ["…", "…"] }` |
+| `POST /best_sentence` `{ "body": "…" }` | Index of the most descriptive sentence |
+| `GET /youtube_summarize?video_id=…` | Chunked per-section summaries of a video |
 
 ## 🧑‍💻 Quickstart
 
@@ -120,7 +98,13 @@ Install from PyPI (the import package is `quint`):
 pip install quintessentia
 ```
 
-Or run the API locally from source — CPU is fine for chunking and summarization; transcription is far faster on a GPU (see [deploy](#-how-to-deploy-this-api-on-cloud)).
+For real-time CPU chunking, also grab the fast static embeddings:
+
+```shell
+pip install model2vec
+```
+
+Or run the batch API locally from source — CPU is fine for chunking and summarization; Whisper transcription is far faster on a GPU (see [deploy](#-deploy-the-batch-api-on-a-gpu-cloud)).
 
 ```shell
 git clone https://github.com/poloniki/quint.git
@@ -147,9 +131,9 @@ Set `QUINT_API_URL` if the API isn't on `http://localhost:8083`.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🛜 How to deploy this API on cloud
+## 🛜 Deploy the batch API on a GPU cloud
 
-Important note: I highly recommend using the JAX solution, as it is much faster than the OpenAI-proposed way. Please refer to this repo [Whisper JAX](https://github.com/sanchit-gandhi/whisper-jax) for more details. I will attach one of the tables from that repo:
+The real-time chunker and the live demo run anywhere on a CPU. Only the **batch Whisper transcription** benefits from a GPU. For that, I recommend the JAX backend — it's much faster than the OpenAI-proposed way. See [Whisper JAX](https://github.com/sanchit-gandhi/whisper-jax); one of its tables:
 
 **Table 1:** Average inference time in seconds for audio files of increasing length. GPU device is a single A100 40GB GPU.
 TPU device is a single TPU v4-8.

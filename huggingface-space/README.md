@@ -1,5 +1,5 @@
 ---
-title: Quint Demo
+title: Quint — real-time speech to paragraphs
 emoji: 🎙️
 colorFrom: indigo
 colorTo: blue
@@ -11,12 +11,14 @@ pinned: false
 license: mit
 ---
 
-# Quint demo (Hugging Face Space)
+# Quint — real-time speech → semantic paragraphs
 
-A live demo of [Quint](https://github.com/poloniki/quint)'s text pipeline: paste
-a transcript and it splits it into semantically coherent sections and summarizes
-each one. (Transcription with Whisper needs a GPU, so this CPU Space focuses on
-the chunk + summarize stage.)
+A live demo of [Quint](https://github.com/poloniki/quint), running entirely on a
+**free CPU Space, no GPU**. Speak into your mic and it transcribes (Moonshine via
+sherpa-onnx), restores punctuation, and groups your words into semantic paragraphs
+on the fly with Model2Vec static embeddings + Quint's single-pass streaming chunker.
+Two more tabs work without a mic: paste a transcript to watch paragraphs form one
+pass, or chunk + summarize a transcript.
 
 ## Deploy
 
@@ -42,7 +44,7 @@ setup:
 Create a Gradio Space at <https://huggingface.co/new-space> and upload `app.py`,
 `requirements.txt`, and this `README.md` to its root.
 
-The demo is self-contained: it mirrors Quint's chunking algorithm with only the
-lightweight deps it needs (sentence-transformers, pysbd, scipy, scikit-learn,
-openai), so it builds on a free CPU Space. See the full package at
+The demo is self-contained: it mirrors Quint's streaming chunker with only the
+lightweight, torch-free deps it needs (model2vec, sherpa-onnx, pysbd, numpy,
+openai), so it builds and runs on a free CPU Space. See the full package at
 [`quintessentia`](https://pypi.org/project/quintessentia/).

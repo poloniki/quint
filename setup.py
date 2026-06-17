@@ -15,8 +15,9 @@ setup(
     # Distribution name on PyPI ("pip install quintessentia"); the import package
     # is still `quint`.
     name="quintessentia",
-    version="1.1",
-    description="Transcribe, chunk and summarize podcasts (FastAPI + Whisper + OpenAI)",
+    version="1.2",
+    description="Real-time semantic chunking of speech into paragraphs, on a CPU "
+    "(plus a transcribe/chunk/summarize API)",
     long_description=long_description,
     long_description_content_type="text/markdown",
     author="Polovinkin Nikita",
@@ -24,9 +25,13 @@ setup(
     project_urls={
         "Source": "https://github.com/poloniki/quint",
         "Issues": "https://github.com/poloniki/quint/issues",
+        "Live demo": "https://huggingface.co/spaces/poloniki/quint-demo",
     },
     license="MIT",
-    keywords=["whisper", "transcription", "summarization", "podcast", "fastapi", "nlp"],
+    keywords=[
+        "real-time", "streaming", "semantic-chunking", "speech-to-text", "moonshine",
+        "whisper", "transcription", "summarization", "embeddings", "nlp", "fastapi",
+    ],
     python_requires=">=3.10",
     packages=find_packages(exclude=["tests", "tests.*", "notebooks", "frontend"]),
     install_requires=requirements,
