@@ -1,9 +1,7 @@
-# Lightweight deps for the demo only (gradio is provided by the Space SDK).
-# We intentionally do NOT install the full quintessentia package here: its
-# 2022-era spaCy pin needs Pydantic v1, which conflicts with Gradio's Pydantic v2.
-numpy
-scipy
-scikit-learn
-sentence-transformers
+# Lightweight deps (gradio comes from the Space SDK). Model2Vec gives fast static
+# embeddings with no torch; we intentionally do not install the full quintessentia
+# package (its 2022-era spaCy pin needs Pydantic v1, which conflicts with Gradio v2).
+model2vec
 pysbd
+numpy
 openai>=1.0
