@@ -1,11 +1,14 @@
 import numpy as np
 
+import types
+
 from quint.chunking.streaming import (
     merge_short_sentences,
     stream_boundaries,
     stream_boundaries_adaptive,
     stream_chunks,
     stream_chunks_adaptive,
+    stream_chunks_live,
 )
 
 
@@ -112,3 +115,27 @@ def test_adaptive_chunks_strings_end_to_end():
 
     out = stream_chunks_adaptive(topic_a + topic_b, embed, merge_short=False)
     assert len(out) == 2 and out[0].startswith("cats") and out[1].startswith("stocks")
+
+
+def test_live_generator_consumes_a_stream_lazily():
+    topic_a = [f"cats sentence number {i}" for i in range(6)]
+    topic_b = [f"stocks sentence number {i}" for i in range(6)]
+
+    def embed(s):
+        return np.array([1.0, 0.0]) if s.startswith("cats") else np.array([0.0, 1.0])
+
+    gen = stream_chunks_live(iter(topic_a + topic_b), embed)  # iter() -> a real stream
+    assert isinstance(gen, types.GeneratorType)
+    out = list(gen)
+    assert len(out) == 2 and out[0].startswith("cats") and out[1].startswith("stocks")
+
+
+def test_live_merges_short_sentences_online():
+    # a short fragment glues onto the current paragraph instead of standing alone
+    stream = ["The first full sentence here.", "Ok.", "The second full sentence here."]
+
+    def embed(s):
+        return np.array([1.0, 0.0])  # all same topic -> one paragraph
+
+    out = list(stream_chunks_live(iter(stream), embed))
+    assert out == ["The first full sentence here. Ok. The second full sentence here."]

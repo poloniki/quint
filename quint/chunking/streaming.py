@@ -23,7 +23,13 @@ Two boundary rules are provided:
 Both share two quality guards: ``min_size`` forbids closing a chunk before it
 has that many sentences (kills spurious single-sentence chunks), and
 ``merge_short`` folds very short fragments into their neighbour first.
+
+For a true live pipeline, ``stream_chunks_live`` is a generator: it pulls
+sentences from any iterable and *yields* each paragraph the instant it closes,
+holding only bounded state — no whole-document access needed.
 """
+
+from collections import deque
 
 import numpy as np
 
@@ -122,3 +128,41 @@ def stream_chunks_adaptive(
         sentences = merge_short_sentences(sentences, min_words)
     bounds = stream_boundaries_adaptive(sentences, embed, z, warmup, min_size)
     return _build_chunks(sentences, bounds)
+
+
+def stream_chunks_live(
+    sentences, embed, z=1.3, warmup=5, min_size=2, min_words=4, window=256
+):
+    """Yield paragraphs as they close, consuming a sentence *stream* lazily.
+
+    Unlike the list-in/list-out variants, this is a generator: it pulls sentences
+    one at a time from any iterable and yields each paragraph the instant a
+    boundary is detected, holding only O(``window``) state — so it runs on a live
+    transcript (e.g. words arriving from speech-to-text) without ever materializing
+    the whole document. The adaptive threshold needs ~``warmup`` sentences before
+    the first cut. Short sentences are merged into the current paragraph online.
+    """
+    chunk, centroid, n = [], None, 0
+    seen = deque(maxlen=window)
+    for s in sentences:
+        if chunk and len(s.split()) < min_words:        # online short-sentence merge
+            chunk[-1] = f"{chunk[-1]} {s}"
+            continue
+        v = _normalized(embed, s)
+        if centroid is None:
+            chunk, centroid, n = [s], v, 1
+            continue
+        sim = float(v @ centroid)
+        drifted = len(seen) >= warmup and sim < (
+            float(np.mean(seen)) - z * (float(np.std(seen)) + 1e-9)
+        )
+        if drifted and len(chunk) >= min_size:
+            yield " ".join(chunk)
+            chunk, centroid, n = [s], v, 1
+        else:
+            seen.append(sim)
+            chunk.append(s)
+            n += 1
+            centroid = centroid + (v - centroid) / n
+    if chunk:
+        yield " ".join(chunk)
