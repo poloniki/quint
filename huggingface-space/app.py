@@ -4,10 +4,11 @@ Speak into the mic and watch it transcribe and group into semantic paragraphs.
 Speech-to-text is Moonshine (sherpa-onnx, ONNX/CPU, no torch) — a fast model
 whose compute scales with the actual audio length (unlike Whisper's fixed 30s
 window), so short pause-delimited utterances transcribe in tens of milliseconds.
-We buffer the mic audio, detect a pause, transcribe the utterance — Moonshine
-returns clean, punctuated, cased text — then segment it and group the sentences
-into semantic paragraphs with Model2Vec static embeddings + a single-pass,
-self-calibrating chunker (mirroring quint.chunking.streaming). No GPU.
+We buffer the mic audio, detect a pause, transcribe the utterance, restore
+sentence punctuation (a CT-transformer — Moonshine under-punctuates fast speech),
+then segment it and group the sentences into semantic paragraphs with Model2Vec
+static embeddings + a single-pass, self-calibrating chunker (mirroring
+quint.chunking.streaming). No GPU.
 Set OPENAI_API_KEY as a Space secret for the summaries tab.
 """
 
@@ -39,7 +40,9 @@ def embed(s):
 
 # ------------------------------------------------------------------ speech-to-text
 RECOGNIZER = None
-_ASR_MODEL = "sherpa-onnx-moonshine-base-en-int8"   # ~270 MB int8, punctuated + cased
+PUNCT = None
+_ASR_MODEL = "sherpa-onnx-moonshine-base-en-int8"   # ~270 MB int8, fast + cased
+_PUNCT_MODEL = "sherpa-onnx-punct-ct-transformer-zh-en-vocab272727-2024-04-12"  # ~293 MB
 
 
 def _fetch(name, kind):
@@ -52,7 +55,7 @@ def _fetch(name, kind):
 
 
 def _load_models():
-    global RECOGNIZER
+    global RECOGNIZER, PUNCT
     try:
         import sherpa_onnx
 
@@ -66,6 +69,15 @@ def _load_models():
             num_threads=2,
         )
         print("moonshine ready")
+        _fetch(_PUNCT_MODEL, "punctuation-models")
+        PUNCT = sherpa_onnx.OfflinePunctuation(
+            sherpa_onnx.OfflinePunctuationConfig(
+                model=sherpa_onnx.OfflinePunctuationModelConfig(
+                    ct_transformer=glob.glob(f"{_PUNCT_MODEL}/model.onnx")[0], num_threads=1
+                )
+            )
+        )
+        print("punctuation ready")
     except Exception as exc:  # noqa: BLE001 - degrade gracefully if unavailable
         print("speech model unavailable:", exc)
 
@@ -124,6 +136,46 @@ def _transcribe(audio):
         return ""
 
 
+_CJK = {"。": ". ", "，": ", ", "？": "? ", "！": "! ", "、": ", ", "；": "; ", "：": ": "}
+
+
+def _repunct(segment):
+    """Strip and re-punctuate one run-on segment, keeping word casing."""
+    stripped = re.sub(r"\s+", " ", re.sub(r"[^\w\s']", " ", segment)).strip()
+    if not stripped:
+        return ""
+    out = PUNCT.add_punctuation(stripped)
+    for a, b in _CJK.items():
+        out = out.replace(a, b)
+    res, cap = [], True
+    for ch in out:
+        res.append(ch.upper() if cap and ch.isalpha() else ch)
+        if ch in ".!?":
+            cap = True
+        elif not ch.isspace():
+            cap = False
+    return "".join(res).strip()
+
+
+def _punctuate(text):
+    """Restore punctuation only on run-on segments; leave good sentences alone.
+
+    Moonshine under-punctuates fast continuous speech, leaving the chunker with
+    run-on 'sentences' and forcing mid-thought paragraph breaks. But re-punctuating
+    text Moonshine *did* punctuate well makes it worse. So we segment first and only
+    re-run the CT-transformer on long (run-on) pieces, normalizing its CJK marks to
+    ASCII and capitalizing sentence starts; short, well-formed sentences pass through.
+    """
+    text = text.strip()
+    if not text or PUNCT is None:
+        return text
+    out = []
+    for s in seg.segment(text):
+        s = s.strip()
+        out.append(s if len(s.split()) <= 25 else _repunct(s))
+    return " ".join(p for p in out if p).strip()
+
+
 def _chunk(transcript):
     sents = seg.segment(transcript)
     if len(sents) > 1:
@@ -143,7 +195,7 @@ def _flush(state):
         return
     audio = np.concatenate(state["buf"]).astype(np.float32)
     state["buf"], state["voiced"] = [], False
-    text = _drop_hallucinations(_transcribe(audio))
+    text = _drop_hallucinations(_punctuate(_transcribe(audio)))
     if text:
         state["transcript"] = f"{state['transcript']} {text}".strip()
         state["paras"] = _chunk(state["transcript"])
@@ -153,7 +205,7 @@ def on_mic(new_chunk, state):
     if state is None:
         state = _new_state()
     if RECOGNIZER is None:
-        return "Speech model is still loading (first run downloads ~270 MB) or unavailable — try the text tabs.", state
+        return "Speech model is still loading (first run downloads ~560 MB) or unavailable — try the text tabs.", state
     if new_chunk is None:                           # stream paused/ended -> flush trailing
         if state["voiced"] and sum(len(c) for c in state["buf"]) >= MIN_UTT:
             _flush(state)
@@ -343,9 +395,9 @@ with gr.Blocks(title="Quint — real-time speech to paragraphs") as demo:
     with gr.Tab("🎙️ Live mic"):
         gr.Markdown(
             "Click the mic, allow access, and talk. It buffers your audio, and when "
-            "you **pause** it transcribes the sentence (Moonshine — a fast CPU model, "
-            "clean punctuated text) and folds it into the right semantic paragraph. "
-            "_English; first use downloads ~270 MB, so the very first response can "
+            "you **pause** it transcribes the sentence (Moonshine — a fast CPU model), "
+            "restores punctuation, and folds it into the right semantic paragraph. "
+            "_English; first use downloads ~560 MB, so the very first response can "
             "take a minute._"
         )
         mic = gr.Audio(sources=["microphone"], streaming=True, label="microphone")
