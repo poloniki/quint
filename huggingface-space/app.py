@@ -27,7 +27,9 @@ from model2vec import StaticModel
 seg = pysbd.Segmenter(language="en", clean=False)
 model = StaticModel.from_pretrained("minishlab/potion-base-8M")
 Z, WARMUP, MIN_SIZE, MIN_WORDS = 1.3, 3, 2, 4   # warmup 3 (vs lib's 5): short demo inputs
-MAX_PARA_SENTS = 6                              # readability cap: break very long paragraphs
+MAX_PARA_SENTS = 6                              # readability cap for the text-stream viz
+MAX_PARA_WORDS = 85                            # readability cap for ASR chunks (word-based)
+MAX_SEG_WORDS = 20                             # break unpunctuated ASR runs into pseudo-sentences
 
 
 def embed(s):
@@ -76,7 +78,7 @@ SR = 16000
 SILENCE_RMS = 0.008          # below this a chunk counts as silence
 PAUSE_SEC = 0.5             # this much quiet after speech closes an utterance
 MIN_UTT = SR * 1            # need >= 1 s of audio before transcribing
-MAX_UTT = SR * 15          # safety flush so a runaway buffer can't stall
+MAX_UTT = SR * 10          # safety flush; shorter clips also punctuate better
 # Moonshine/Whisper invent stock filler on silence/noise — drop such whole sentences
 _HALLUC_SENTS = {
     "you", "thank you", "thank you very much", "thank you so much", "thanks",
@@ -255,26 +257,47 @@ def merge_short(sentences, min_words=MIN_WORDS):
     return out
 
 
+def _resplit(sentences, max_words=MAX_SEG_WORDS):
+    """Break overly long segments (unpunctuated ASR runs) into word-bounded pieces.
+
+    The chunker keys off sentences, but ASR punctuation is unreliable on fast
+    continuous speech — a 150-word run can arrive as one 'sentence'. Splitting it
+    into ~``max_words`` pieces gives the chunker and the word cap something to work
+    with, so paragraphs stay readable no matter how the transcript is punctuated.
+    """
+    out = []
+    for s in sentences:
+        w = s.split()
+        if len(w) <= max_words:
+            out.append(s)
+        else:
+            for j in range(0, len(w), max_words):
+                out.append(" ".join(w[j:j + max_words]))
+    return out
+
+
 def chunk_adaptive(sentences):
-    sentences = merge_short(sentences)
-    cuts, centroid, n, start, seen = [], None, 0, 0, []
+    sentences = _resplit(merge_short(sentences))
+    cuts, centroid, n, start, seen, pw = [], None, 0, 0, [], 0
     for i, s in enumerate(sentences):
+        sw = len(s.split())
         v = embed(s)
         if centroid is None:
-            centroid, n, start = v, 1, i
+            centroid, n, start, pw = v, 1, i, sw
             continue
         sim = float(v @ centroid)
         drift = len(seen) >= WARMUP and sim < (
             float(np.mean(seen)) - Z * (float(np.std(seen)) + 1e-9)
         )
-        long_run = (i - start) >= MAX_PARA_SENTS          # readability cap
+        long_run = pw >= MAX_PARA_WORDS                   # readability cap (word-based)
         if (drift or long_run) and (i - start) >= MIN_SIZE:
             cuts.append(i)
-            centroid, n, start = v, 1, i
+            centroid, n, start, pw = v, 1, i, sw
         else:
             seen.append(sim)
             n += 1
             centroid = centroid + (v - centroid) / n
+            pw += sw
     chunks, prev = [], 0
     for b in cuts + [len(sentences)]:
         chunk = " ".join(sentences[prev:b]).strip()
